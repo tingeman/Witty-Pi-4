@@ -349,7 +349,7 @@ log2file()
   if [ $TIME_UNKNOWN -eq 0 ]; then
     datetime=$(date +'[%Y-%m-%d %H:%M:%S]')
   elif [ $TIME_UNKNOWN -eq 2 ]; then
-    datetime=$(date +'<%Y-%m-%d %H:%M:%S>')
+    datetime=$(date +'[%Y-%m-%d %H:%M:%S]')
   fi
   local msg="$datetime $1"
   echo $msg >> $wittypi_home/wittyPi.log
