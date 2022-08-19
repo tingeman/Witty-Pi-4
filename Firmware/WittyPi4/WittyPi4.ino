@@ -417,7 +417,7 @@ void cutPower() {
   digitalWrite(PIN_CTRL, 0);
   if (alarm1Delayed) {  // process delayed Alarm1 (startup)
     alarm1Delayed = false;
-    delay(500);
+    delay(5000);
     updateRegister(I2C_ACTION_REASON, REASON_ALARM1_DELAYED);
     emulateButtonClick();
   }
