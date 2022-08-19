@@ -96,10 +96,10 @@ fi
 echo '>>> Make sure en_GB.UTF-8 locale is installed'
 locale_commentout=$(sed -n 's/\(#\).*en_GB.UTF-8 UTF-8/1/p' /etc/locale.gen)
 if [[ $locale_commentout -ne 1 ]]; then
-	echo 'Seems en_GB.UTF-8 locale has been installed, skip this step.'
+  echo 'Seems en_GB.UTF-8 locale has been installed, skip this step.'
 else
-	sed -i.bak 's/^.*\(en_GB.UTF-8[[:blank:]]\+UTF-8\)/\1/' /etc/locale.gen
-	locale-gen
+  sed -i.bak 's/^.*\(en_GB.UTF-8[[:blank:]]\+UTF-8\)/\1/' /etc/locale.gen
+  locale-gen
 fi
 
 # install wittyPi

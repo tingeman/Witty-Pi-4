@@ -12,10 +12,13 @@ fi
 
 # get current directory and schedule file path
 cur_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-schedule_file="$cur_dir/schedule.wpi"
+#SCHEDULE_FILE="$cur_dir/schedule.wpi"
 
 # utilities
 . "$cur_dir/utilities.sh"
+. "$cur_dir/wittyPi.conf"
+
+
 
 # pending until system time gets initialized
 while [[ "$(date +%Y)" == *"1969"* ]] || [[ "$(date +%Y)" == *"1970"* ]]; do
@@ -89,7 +92,7 @@ setup_on_state()
   set_shutdown_time $date $hour $minute $second
 }
 
-if [ -f $schedule_file ]; then
+if [ -f $SCHEDULE_FILE ]; then
   begin=0
   end=0
   count=0
@@ -107,7 +110,7 @@ if [ -f $schedule_file ]; then
       states[$count]=$(echo $line)
       count=$((count+1))
     fi
-  done < $schedule_file
+  done < $SCHEDULE_FILE
 
   if [ $begin == 0 ] ; then
     log 'I can not find the begin time in the script...'

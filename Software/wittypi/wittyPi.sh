@@ -19,8 +19,10 @@ my_dir="`( cd \"$my_dir\" && pwd )`"
 if [ -z "$my_dir" ] ; then
   exit 1
 fi
+. $my_dir/wittyPi.conf
 . $my_dir/utilities.sh
 . $my_dir/gpio-util.sh
+
 
 if [ $(is_mc_connected) -ne 1 ]; then
   echo ''
@@ -130,7 +132,7 @@ choose_schedule_script()
 {
   local res=$(check_sys_and_rtc_time)
   if [ -z "$res" ]; then
-    local files=($my_dir/schedules/*.wpi)
+    local files=($SCHEDULE_DIR/*.wpi)
     local count=${#files[@]}
     echo "  I can see $count schedule scripts in the \"schedules\" directory:"
     for (( i=0; i<$count; i++ ));
@@ -141,9 +143,9 @@ choose_schedule_script()
     if [[ $index =~ [0-9]+ ]] && [ $(($index >= 1)) == '1' ] && [ $(($index <= $count)) == '1' ] ; then
       local script=${files[$((index-1))]};
       log "  Copying \"${script##*/}\" to \"schedule.wpi\"..."
-      cp ${script} "$my_dir/schedule.wpi"
+      cp ${script} "$SCHEDULE_FILE"
       log '  Running the script...'
-      . "$my_dir/runScript.sh" | tee -a "$my_dir/schedule.log"
+      . "$my_dir/runScript.sh" | tee -a "$SCHEDULE_LOG_FILE"
       log '  Done :-)'
     else
       echo "  \"$index\" is not a good choice, I need a number from 1 to $count"
@@ -240,7 +242,7 @@ set_default_state()
 set_power_cut_delay()
 {
   local maxVal='8.0';
-	if [ $(($firmwareID)) -ge 35 ]; then
+  if [ $(($firmwareID)) -ge 35 ]; then
     maxVal='25.0'
   fi
   read -p "Input new delay (0.0~$maxVal: value in seconds): " delay
@@ -255,44 +257,44 @@ set_power_cut_delay()
 
 set_pulsing_interval()
 {
-	read -p 'Input new interval (value in seconds, 1~20): ' interval
-	if [ $interval -ge 1 ] && [ $interval -le 20 ]; then
-	  i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_PULSE_INTERVAL $interval
-	  log "Pulsing interval set to $interval seconds!" && sleep 2
-	else
-	  echo 'Please input from 1 to 20' && sleep 2
-	fi
+  read -p 'Input new interval (value in seconds, 1~20): ' interval
+  if [ $interval -ge 1 ] && [ $interval -le 20 ]; then
+    i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_PULSE_INTERVAL $interval
+    log "Pulsing interval set to $interval seconds!" && sleep 2
+  else
+    echo 'Please input from 1 to 20' && sleep 2
+  fi
 }
 
 set_white_led_duration()
 {
-	read -p 'Input new duration for white LED (value in milliseconds, 0~254): ' duration
-	if [ $duration -ge 0 ] && [ $duration -le 254 ]; then
-		i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_BLINK_LED $duration
-		log "White LED duration set to $duration!" && sleep 2
-	else
-	  echo 'Please input from 0 to 254' && sleep 2
-	fi
+  read -p 'Input new duration for white LED (value in milliseconds, 0~254): ' duration
+  if [ $duration -ge 0 ] && [ $duration -le 254 ]; then
+    i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_BLINK_LED $duration
+    log "White LED duration set to $duration!" && sleep 2
+  else
+    echo 'Please input from 0 to 254' && sleep 2
+  fi
 }
 
 set_dummy_load_duration()
 {
-	read -p 'Input new duration for dummy load (value in milliseconds, 0~254): ' duration
-	if [ $duration -ge 0 ] && [ $duration -le 254 ]; then
-		i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_DUMMY_LOAD $duration
-		log "Dummy load duration set to $duration!" && sleep 2
-	else
-	  echo 'Please input from 0 to 254' && sleep 2
-	fi
+  read -p 'Input new duration for dummy load (value in milliseconds, 0~254): ' duration
+  if [ $duration -ge 0 ] && [ $duration -le 254 ]; then
+    i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_DUMMY_LOAD $duration
+    log "Dummy load duration set to $duration!" && sleep 2
+  else
+    echo 'Please input from 0 to 254' && sleep 2
+  fi
 }
 
 set_vin_adjustment()
 {
-	read -p 'Input Vin adjustment (-1.27~1.27: value in volts): ' vinAdj
+  read -p 'Input Vin adjustment (-1.27~1.27: value in volts): ' vinAdj
   if (( $(awk "BEGIN {print ($vinAdj >= -1.27 && $vinAdj <= 1.27)}") )); then
     local adj=$(calc $vinAdj*100)
     if (( $(awk "BEGIN {print ($adj < 0)}") )); then
-    	adj=$((255+$adj))
+      adj=$((255+$adj))
     fi
     i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_ADJ_VIN ${adj%.*}
     local setting=$(printf 'Vin adjustment set to %.2fV!\n' $vinAdj)
@@ -304,11 +306,11 @@ set_vin_adjustment()
 
 set_vout_adjustment()
 {
-	read -p 'Input Vout adjustment (-1.27~1.27: value in volts): ' voutAdj
+  read -p 'Input Vout adjustment (-1.27~1.27: value in volts): ' voutAdj
   if (( $(awk "BEGIN {print ($voutAdj >= -1.27 && $voutAdj <= 1.27)}") )); then
     local adj=$(calc $voutAdj*100)
     if (( $(awk "BEGIN {print ($adj < 0)}") )); then
-    	adj=$((255+$adj))
+      adj=$((255+$adj))
     fi
     i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_ADJ_VOUT ${adj%.*}
     local setting=$(printf 'Vout adjustment set to %.2fV!\n' $voutAdj)
@@ -320,11 +322,11 @@ set_vout_adjustment()
 
 set_iout_adjustment()
 {
-	read -p 'Input Iout adjustment (-1.27~1.27: value in amps): ' ioutAdj
+  read -p 'Input Iout adjustment (-1.27~1.27: value in amps): ' ioutAdj
   if (( $(awk "BEGIN {print ($ioutAdj >= -1.27 && $ioutAdj <= 1.27)}") )); then
     local adj=$(calc $ioutAdj*100)
     if (( $(awk "BEGIN {print ($adj < 0)}") )); then
-    	adj=$((255+$adj))
+      adj=$((255+$adj))
     fi
     i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_ADJ_IOUT ${adj%.*}
     local setting=$(printf 'Iout adjustment set to %.2fA!\n' $ioutAdj)
@@ -341,7 +343,7 @@ other_settings()
   local ds=$(i2c_read 0x01 $I2C_MC_ADDRESS $I2C_CONF_DEFAULT_ON)
   if [[ $ds -eq 0 ]]; then
     echo ' [default OFF]'
-	else
+  else
     echo ' [default ON]'
   fi
   echo -n '  [2] Power cut delay after shutdown'
@@ -361,25 +363,25 @@ other_settings()
   echo -n '  [6] Vin adjustment'
   local vinAdj=$(i2c_read 0x01 $I2C_MC_ADDRESS $I2C_CONF_ADJ_VIN)
   if [[ $vinAdj -gt 127 ]]; then
-  	vinAdj=$(calc $(($vinAdj-255))/100)
- 	else
- 		vinAdj=$(calc $(($vinAdj))/100)
+    vinAdj=$(calc $(($vinAdj-255))/100)
+  else
+    vinAdj=$(calc $(($vinAdj))/100)
   fi
   printf ' [%.2fV]\n' "$vinAdj"
   echo -n '  [7] Vout adjustment'
   local voutAdj=$(i2c_read 0x01 $I2C_MC_ADDRESS $I2C_CONF_ADJ_VOUT)
   if [[ $voutAdj -gt 127 ]]; then
-  	voutAdj=$(calc $(($voutAdj-255))/100)
- 	else
- 		voutAdj=$(calc $(($voutAdj))/100)
+    voutAdj=$(calc $(($voutAdj-255))/100)
+  else
+    voutAdj=$(calc $(($voutAdj))/100)
   fi
   printf ' [%.2fV]\n' "$voutAdj"
   echo -n '  [8] Iout adjustment'
   local ioutAdj=$(i2c_read 0x01 $I2C_MC_ADDRESS $I2C_CONF_ADJ_IOUT)
   if [[ $ioutAdj -gt 127 ]]; then
-  	ioutAdj=$(calc $(($ioutAdj-255))/100)
- 	else
- 		ioutAdj=$(calc $(($ioutAdj))/100)
+    ioutAdj=$(calc $(($ioutAdj-255))/100)
+  else
+    ioutAdj=$(calc $(($ioutAdj))/100)
   fi
   printf ' [%.2fA]\n' "$ioutAdj"
   read -p "Which parameter to set? (1~8) " action
@@ -413,8 +415,8 @@ reset_shutdown_time()
 delete_schedule_script()
 {
   log '  Deleting "schedule.wpi" file...' '-n'
-  if [ -f "$my_dir/schedule.wpi" ]; then
-    rm "$my_dir/schedule.wpi"
+  if [ -f "$SCHEDULE_FILE" ]; then
+    rm "$SCHEDULE_FILE"
     log ' done :-)'
   else
     log ' file does not exist'
@@ -509,8 +511,8 @@ while true; do
     iout=$(get_output_current)
     voltages=">>> "
     if [ $(get_power_mode) -eq 1 ]; then
-		  voltages+="Vin=$(printf %.02f $vin)V, "
-		fi
+      voltages+="Vin=$(printf %.02f $vin)V, "
+    fi
     voltages+="Vout=$(printf %.02f $vout)V, Iout=$(printf %.02f $iout)A"
     echo "$voltages"
   fi
@@ -535,13 +537,13 @@ while true; do
     echo "  [$startup_time]";
   fi
   echo -n '  6. Choose schedule script'
-  if [ -f "$my_dir/schedule.wpi" ]; then
+  if [ -f "$SCHEDULE_FILE" ]; then
     echo ' [in use]'
   else
     echo ''
   fi
   echo -n '  7. Set low voltage threshold'
-	lowVolt=$(get_low_voltage_threshold)
+    lowVolt=$(get_low_voltage_threshold)
   if [ ${#lowVolt} == '8' ]; then
     echo ''
   else

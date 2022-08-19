@@ -4,6 +4,15 @@
 # This script provides some useful utility functions
 #
 
+# include configuration script in same directory
+wittypi_dir="`dirname \"$0\"`"
+wittypi_dir="`( cd \"$wittypi_dir\" && pwd )`"
+if [ -z "$wittypi_dir" ] ; then
+  exit 1
+fi
+. $wittypi_dir/wittyPi.conf
+
+
 export LC_ALL=en_GB.UTF-8
 
 if [ -z ${I2C_MC_ADDRESS+x} ]; then
@@ -147,7 +156,7 @@ get_network_timestamp()
 
 is_mc_connected()
 {
-  local result=$(i2cdetect -y 1)
+  local result=$(/usr/sbin/i2cdetect -y 1)
   if [[ $result == *"$(printf '%02x')"* ]] ; then
     echo 1
   else
@@ -341,8 +350,8 @@ current_timestamp()
   fi
 }
 
-wittypi_home="`dirname \"$0\"`"
-wittypi_home="`( cd \"$wittypi_home\" && pwd )`"
+#wittypi_home="`dirname \"$0\"`"
+#wittypi_home="`( cd \"$wittypi_home\" && pwd )`"
 log2file()
 {
   local datetime='[xxxx-xx-xx xx:xx:xx]'
@@ -352,7 +361,8 @@ log2file()
     datetime=$(date +'[%Y-%m-%d %H:%M:%S]')
   fi
   local msg="$datetime $1"
-  echo $msg >> $wittypi_home/wittyPi.log
+#  echo $msg >> $wittypi_home/wittyPi.log
+  echo $msg >> $WITTYPI_LOG_FILE
 }
 
 log()
@@ -371,7 +381,7 @@ i2c_read()
   if [ $# -gt 3 ] ; then
     retry=$4
   fi
-  local result=$(i2cget -y $1 $2 $3)
+  local result=$(/usr/sbin/i2cget -y $1 $2 $3)
   if [[ $result =~ ^0x[0-9a-fA-F]{2}$ ]] ; then
     echo $result;
   else
@@ -392,7 +402,7 @@ i2c_write()
   if [ $# -gt 4 ] ; then
     retry=$5
   fi
-  i2cset -y $1 $2 $3 $4
+  /usr/sbin/i2cset -y $1 $2 $3 $4
   local result=$(i2c_read $1 $2 $3)
   if [ "$result" != $(dec2hex "$4") ] ; then
     retry=$(( $retry + 1 ))
@@ -408,7 +418,7 @@ i2c_write()
 
 get_temperature()
 {
-  local data=$(i2cget -y 1 $I2C_MC_ADDRESS $I2C_LM75B_TEMPERATURE w)
+  local data=$(/usr/sbin/i2cget -y 1 $I2C_MC_ADDRESS $I2C_LM75B_TEMPERATURE w)
 
   #if [[ $data =~ ^0x[0-9a-fA-F]{4}$ && $data != 0xffff ]]; then
   if [[ $data =~ ^0x[0-9a-fA-F]{4}$ ]]; then

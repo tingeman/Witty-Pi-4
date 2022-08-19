@@ -144,17 +144,17 @@ while [ $counter -lt 5 ]; do  # increase this value if it needs more time
 done
 
 # run beforeScript.sh
-"$cur_dir/beforeScript.sh" >> "$cur_dir/wittyPi.log" 2>&1
+"$cur_dir/beforeScript.sh" >> "$WITTYPI_LOG_FILE" 2>&1
 
 # run schedule script
 if [ $has_mc == 1 ] ; then
-  "$cur_dir/runScript.sh" 0 revise >> "$cur_dir/schedule.log" &
+  "$cur_dir/runScript.sh" 0 revise >> "$SCHEDULE_LOG_FILE" &
 else
   log 'Witty Pi is not connected, skip schedule script...'
 fi
 
 # run afterStartup.sh
-"$cur_dir/afterStartup.sh" >> "$cur_dir/wittyPi.log" 2>&1
+"$cur_dir/afterStartup.sh" >> "$WITTYPI_LOG_FILE" 2>&1
 
 # indicates system is up
 log "Send out the SYS_UP signal via GPIO-$SYSUP_PIN pin."
@@ -188,7 +188,7 @@ else
 fi
 
 # run beforeShutdown.sh
-"$cur_dir/beforeShutdown.sh" >> "$cur_dir/wittyPi.log" 2>&1
+"$cur_dir/beforeShutdown.sh" >> "$WITTYPI_LOG_FILE" 2>&1
 
 # shutdown Raspberry Pi
 do_shutdown $HALT_PIN
