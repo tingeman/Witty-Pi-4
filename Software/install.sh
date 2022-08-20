@@ -5,6 +5,20 @@
 # This script will install required software for Witty Pi.
 # It is recommended to run it in your home directory.
 #
+# 2022-08 Thomas Ingeman-Nielsen, thin@dtu.dk
+#             Updated download URL to forked repository
+#             By default do not install UWI
+
+WITTYPI_DOWNLOAD_URL="https://github.com/tingeman/Witty-Pi-4/archive/refs/heads/main.zip"
+# To install UUGEAR latest version instead, uncomment the following line:
+# WITTYPI_DOWNLOAD_URL="https://www.uugear.com/repo/WittyPi4/LATEST"
+
+# Set following line to 'true' to install UUGEAR Web Interface
+INSTALL_UWI=false
+
+UWI_DOWNLOAD_URL="https://www.uugear.com/repo/UWI/installUWI.sh"
+
+
 
 # check if sudo is used
 if [ "$(id -u)" != 0 ]; then
@@ -17,6 +31,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/wittypi"
 
 # error counter
 ERR=0
+
 
 echo '================================================================================'
 echo '|                                                                              |'
@@ -108,7 +123,8 @@ if [ $ERR -eq 0 ]; then
   if [ -d "wittypi" ]; then
     echo 'Seems wittypi is installed already, skip this step.'
   else
-    wget https://www.uugear.com/repo/WittyPi4/LATEST -O wittyPi.zip || ((ERR++))
+    #wget https://www.uugear.com/repo/WittyPi4/LATEST -O wittyPi.zip || ((ERR++))
+    wget $WITTYPI_DOWNLOAD_URL -O wittyPi.zip || ((ERR++))
     unzip wittyPi.zip -d wittypi || ((ERR++))
     cd wittypi
     chmod +x wittyPi.sh
@@ -129,9 +145,13 @@ if [ $ERR -eq 0 ]; then
   fi
 fi
 
-# install UUGear Web Interface
-curl https://www.uugear.com/repo/UWI/installUWI.sh | bash
-
+if [ -z $INSTALL_UWI ] || [ "$INSTALL_UWI" = true ]; then
+  # install UUGear Web Interface
+  #curl https://www.uugear.com/repo/UWI/installUWI.sh | bash
+  curl $UWI_DOWNLOAD_URL | bash
+else
+  echo 'Skipping installation of UWI...'
+fi
 echo
 if [ $ERR -eq 0 ]; then
   echo '>>> All done. Please reboot your Pi :-)'
