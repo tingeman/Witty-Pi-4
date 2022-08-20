@@ -3,6 +3,11 @@
 #
 # This script provides some useful utility functions
 #
+#
+# Modified:
+# 2022-08 Thomas Ingeman-Nielsen, thin@dtu.dk
+#             Implemented use of external wittyPi.conf to configure paths
+#             with fall-back to standard locations if wittyPi.conf is not available.
 
 # include configuration script in same directory
 wittypi_dir="`dirname \"$0\"`"
@@ -10,7 +15,16 @@ wittypi_dir="`( cd \"$wittypi_dir\" && pwd )`"
 if [ -z "$wittypi_dir" ] ; then
   exit 1
 fi
-. $wittypi_dir/wittyPi.conf
+
+# include wittyPi.conf script if it exists
+if [ -f "$wittypi_dir/wittyPi.conf" ]; then
+  . $wittypi_dir/wittyPi.conf
+fi
+
+# If log-file name and path is not defined, set it to the standard location
+if [ -z "$WITTYPI_LOG_FILE" ] ; then
+  WITTYPI_LOG_FILE=$wittypi_dir/wittyPi.log
+fi
 
 
 export LC_ALL=en_GB.UTF-8
