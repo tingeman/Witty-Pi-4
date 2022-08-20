@@ -31,6 +31,12 @@ if [ -z "$SCHEDULE_LOG_FILE" ] ; then
   SCHEDULE_LOG_FILE=$wittypi_dir/schedule.log
 fi
 
+if [ ! -f $WITTYPI_LOG_FILE ] ; then
+  touch $WITTYPI_LOG_FILE
+fi
+if [ ! -f $SCHEDULE_LOG_FILE ] ; then
+  touch $SCHEDULE_LOG_FILE
+fi
 
 
 TIME_UNKNOWN=1

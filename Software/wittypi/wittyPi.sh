@@ -48,6 +48,12 @@ if [ -z "$SCHEDULES_DIR" ] ; then
   SCHEDULES_DIR=$wittypi_dir/schedules
 fi
 
+if [ ! -f $WITTYPI_LOG_FILE ] ; then
+  touch $WITTYPI_LOG_FILE
+fi
+if [ ! -f $SCHEDULE_LOG_FILE ] ; then
+  touch $SCHEDULE_LOG_FILE
+fi
 
 
 if [ $(is_mc_connected) -ne 1 ]; then

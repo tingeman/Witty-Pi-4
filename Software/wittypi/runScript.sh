@@ -40,6 +40,12 @@ if [ -z "$SCHEDULES_DIR" ] ; then
   SCHEDULES_DIR=$wittypi_dir/schedule
 
 
+if [ ! -f $WITTYPI_LOG_FILE ] ; then
+  touch $WITTYPI_LOG_FILE
+fi
+if [ ! -f $SCHEDULE_LOG_FILE ] ; then
+  touch $SCHEDULE_LOG_FILE
+fi
 
 
 # pending until system time gets initialized

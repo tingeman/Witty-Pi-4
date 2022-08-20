@@ -25,6 +25,10 @@ fi
 if [ -z "$WITTYPI_LOG_FILE" ] ; then
   WITTYPI_LOG_FILE=$wittypi_dir/wittyPi.log
 fi
+if [ ! -f $WITTYPI_LOG_FILE ] ; then
+  touch $WITTYPI_LOG_FILE
+fi
+
 
 
 export LC_ALL=en_GB.UTF-8
