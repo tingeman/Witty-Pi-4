@@ -19,7 +19,7 @@ fi
 # This install script may be sourced from other install scripts.
 # In the parent script, set WITTYPI_USE_GLOBAL_SETTINGS=true to
 # by pass definitions below.
-if [[ -z $WITTYPI_USE_GLOBAL_SETTINGS || $WITTYPI_USE_GLOBAL_SETTINGS -neq true ]]; then
+if [[ -z $WITTYPI_USE_GLOBAL_SETTINGS || $WITTYPI_USE_GLOBAL_SETTINGS -ne true ]]; then
 
   CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
   WITTYPI_DIR="$CURRENT_DIR"/wittypi
