@@ -63,18 +63,32 @@ fi
 
 i2c1=$(grep 'dtparam=i2c1=on' /boot/config.txt)
 i2c1=$(echo -e "$i2c1" | sed -e 's/^[[:space:]]*//')
-if [[ -z "$i2c1" || "$i2c1" == "#"* ]]; then
-  echo 'dtparam=i2c1=on' >> /boot/config.txt
+if [[ -z "$i2c1" ]]; then
+    # if line is missing, insert it at end of file
+    echo 'dtparam=i2c1=on' >> /boot/config.txt
+    echo "Inserted missing line:   dtparam=i2c1=on"
+elif [[  "$match" == "#"* ]]; then
+    # if line is commented, uncomment it
+    sed -i "s/^\s*#\s*\(dtparam=i2c1=on.*\)/\1/" /boot/config.txt
+    echo "Found commented line and uncommented:  dtparam=i2c1=on"
 else
-  echo 'Seems i2c1 parameter already set, skip this step.'
+    # if line exists, do nothing
+    echo 'Seems i2c1 parameter already set, skip this step.'
 fi
 
 i2c_arm=$(grep 'dtparam=i2c_arm=on' /boot/config.txt)
 i2c_arm=$(echo -e "$i2c_arm" | sed -e 's/^[[:space:]]*//')
-if [[ -z "$i2c_arm" || "$i2c_arm" == "#"* ]]; then
-  echo 'dtparam=i2c_arm=on' >> /boot/config.txt
+if [[ -z "$i2c_arm" ]]; then
+    # if line is missing, insert it at end of file
+    echo 'dtparam=i2c_arm=on' >> /boot/config.txt
+    echo "Inserted missing line:   dtparam=i2c_arm=on"
+elif [[  "$match" == "#"* ]]; then
+    # if line is commented, uncomment it
+    sed -i "s/^\s*#\s*\(dtparam=i2c_arm=on.*\)/\1/" /boot/config.txt
+    echo "Found commented line and uncommented:  dtparam=i2c_arm=on"
 else
-  echo 'Seems i2c_arm parameter already set, skip this step.'
+    # if line exists, do nothing
+    echo 'Seems i2c_arm parameter already set, skip this step.'
 fi
 
 miniuart=$(grep 'dtoverlay=pi3-miniuart-bt' /boot/config.txt)
