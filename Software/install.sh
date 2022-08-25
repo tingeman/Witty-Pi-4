@@ -142,7 +142,7 @@ if [ $ERR_WPI -eq 0 ]; then
     wget $WITTYPI_DOWNLOAD_URL -O "$TMP_DIR"/wittyPi.zip || ((ERR_WPI++))
     unzip -q "$TMP_DIR"/wittyPi.zip -d "$TMP_DIR"/ || ((ERR_WPI++))
     SRC_DIR="$TMP_DIR"/Witty-Pi-4-main
-    cp -rf "$SRC_DIR"/install_scripts/Software/wittypi/* "$WITTYPI_DIR"/
+    cp -rf "$SRC_DIR"/Software/wittypi/* "$WITTYPI_DIR"/
     cd "$WITTYPI_DIR"
     chmod +x wittyPi.sh
     chmod +x daemon.sh
@@ -163,7 +163,7 @@ if [ $ERR_WPI -eq 0 ]; then
   fi
 fi
 
-if [ -z "$INSTALL_UWI" ] || [ "$INSTALL_UWI" -eq true ]; then
+if [[ -z $INSTALL_UWI || $INSTALL_UWI == true ]]; then
   # install UUGear Web Interface
   curl $UWI_DOWNLOAD_URL | bash
 else
