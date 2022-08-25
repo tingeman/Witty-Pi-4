@@ -149,14 +149,14 @@ if [ $ERR_WPI -eq 0 ]; then
     update-rc.d wittypi defaults || ((ERR_WPI++))
     touch "$WITTYPI_DIR"/wittyPi.log
     touch "$WITTYPI_DIR"/schedule.log
-    cd "$CURRENT_DIR
+    cd "$CURRENT_DIR"
     chown -R $SUDO_USER:$(id -g -n $SUDO_USER) "$WITTYPI_DIR" || ((ERR_WPI++))
     sleep 2
     rm "$TMP_DIR"/wittyPi.zip
   fi
 fi
 
-if [ -z $INSTALL_UWI ] || [ "$INSTALL_UWI" = true ]; then
+if [ -z "$INSTALL_UWI" ] || [ "$INSTALL_UWI" -eq true ]; then
   # install UUGear Web Interface
   curl $UWI_DOWNLOAD_URL | bash
 else
