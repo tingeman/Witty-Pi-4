@@ -32,8 +32,8 @@ if [[ -z $WITTYPI_USE_GLOBAL_SETTINGS || $WITTYPI_USE_GLOBAL_SETTINGS -ne true ]
 
   # Set following line to 'true' to install UUGEAR Web Interface
   INSTALL_UWI=false
-  UWI_DOWNLOAD_URL="https://www.uugear.com/repo/UWI/installUWI.sh"
-else:
+  #UWI_DOWNLOAD_URL="https://www.uugear.com/repo/UWI/installUWI.sh"
+else
   echo ">>> Using globaly defined settings."
 fi
 
