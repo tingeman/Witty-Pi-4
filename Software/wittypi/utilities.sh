@@ -559,7 +559,7 @@ set_default_power_state()
 {
   # 1 = Power on Raspberry Pi when power is connected
   # 0 = Power on Raspberry Pi when power is connected
-  i2c_write 0x01 $I2C_MC_ADDRESS $I2C_DEFAULT_ON $1
+  i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_DEFAULT_ON $1
 }
 
 set_low_voltage_threshold()
