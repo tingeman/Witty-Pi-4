@@ -38,7 +38,7 @@ fi
 # If path to library of schedule files is not defined, set it to the standard location
 if [ -z "$SCHEDULES_DIR" ] ; then
   SCHEDULES_DIR=$wittypi_dir/schedule
-
+fi
 
 if [ ! -f $WITTYPI_LOG_FILE ] ; then
   touch $WITTYPI_LOG_FILE
