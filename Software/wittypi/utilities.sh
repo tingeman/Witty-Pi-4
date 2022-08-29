@@ -21,6 +21,7 @@ if [ -f "$wittypi_dir/wittyPi.conf" ]; then
   . $wittypi_dir/wittyPi.conf
 fi
 
+
 # If log-file name and path is not defined, set it to the standard location
 if [ -z "$WITTYPI_LOG_FILE" ] ; then
   WITTYPI_LOG_FILE=$wittypi_dir/wittyPi.log
@@ -486,7 +487,7 @@ do_shutdown()
   log 'Halting all processes and then shutdown Raspberry Pi...'
 
   # halt everything and shutdown
-  shutdown -h now
+  /usr/sbin/shutdown -h now
 }
 
 schedule_script_interrupted()
