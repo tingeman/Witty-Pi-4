@@ -10,8 +10,9 @@
 #             with fall-back to standard locations if wittyPi.conf is not available.
 
 # include configuration script in same directory
-wittypi_dir="`dirname \"$0\"`"
-wittypi_dir="`( cd \"$wittypi_dir\" && pwd )`"
+#wittypi_dir="`dirname \"$0\"`"
+#wittypi_dir="`( cd \"$wittypi_dir\" && pwd )`"
+wittypi_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 if [ -z "$wittypi_dir" ] ; then
   exit 1
 fi
