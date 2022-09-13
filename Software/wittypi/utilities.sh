@@ -3,6 +3,11 @@
 #
 # This script provides some useful utility functions
 #
+#
+# Modified:
+# 2022-08 Thomas Ingeman-Nielsen, thin@dtu.dk
+#             Implemented use of external wittyPi.conf to configure paths
+#             with fall-back to standard locations if wittyPi.conf is not available.
 
 # include configuration script in same directory
 wittypi_dir="`dirname \"$0\"`"
@@ -10,7 +15,21 @@ wittypi_dir="`( cd \"$wittypi_dir\" && pwd )`"
 if [ -z "$wittypi_dir" ] ; then
   exit 1
 fi
-. $wittypi_dir/wittyPi.conf
+
+# include wittyPi.conf script if it exists
+if [ -f "$wittypi_dir/wittyPi.conf" ]; then
+  . $wittypi_dir/wittyPi.conf
+fi
+
+
+# If log-file name and path is not defined, set it to the standard location
+if [ -z "$WITTYPI_LOG_FILE" ] ; then
+  WITTYPI_LOG_FILE=$wittypi_dir/wittyPi.log
+fi
+if [ ! -f $WITTYPI_LOG_FILE ] ; then
+  touch $WITTYPI_LOG_FILE
+fi
+
 
 
 export LC_ALL=en_GB.UTF-8
@@ -468,7 +487,7 @@ do_shutdown()
   log 'Halting all processes and then shutdown Raspberry Pi...'
 
   # halt everything and shutdown
-  shutdown -h now
+  /usr/sbin/shutdown -h now
 }
 
 schedule_script_interrupted()
@@ -535,6 +554,13 @@ get_recovery_voltage_threshold()
     recVolt+='V'
   fi
   echo $recVolt;
+}
+
+set_default_power_state()
+{
+  # 1 = Power on Raspberry Pi when power is connected
+  # 0 = Power on Raspberry Pi when power is connected
+  i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_DEFAULT_ON $1
 }
 
 set_low_voltage_threshold()

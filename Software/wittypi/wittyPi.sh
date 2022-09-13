@@ -4,6 +4,10 @@
 #
 # Run this application to interactly configure your Witty Pi
 #
+# Modified:
+# 2022-08 Thomas Ingeman-Nielsen, thin@dtu.dk
+#             Implemented use of external wittyPi.conf to configure paths
+#             with fall-back to standard locations if wittyPi.conf is not available.
 
 echo '================================================================================'
 echo '|                                                                              |'
@@ -14,14 +18,42 @@ echo '|                                                                         
 echo '================================================================================'
 
 # include utilities scripts in same directory
-my_dir="`dirname \"$0\"`"
-my_dir="`( cd \"$my_dir\" && pwd )`"
-if [ -z "$my_dir" ] ; then
+wittypi_dir="`dirname \"$0\"`"
+wittypi_dir="`( cd \"$wittypi_dir\" && pwd )`"
+if [ -z "$wittypi_dir" ] ; then
   exit 1
 fi
-. $my_dir/wittyPi.conf
-. $my_dir/utilities.sh
-. $my_dir/gpio-util.sh
+. $wittypi_dir/utilities.sh
+. $wittypi_dir/gpio-util.sh
+
+# include wittyPi.conf script if it exists
+if [ -f "$wittypi_dir/wittyPi.conf" ]; then
+  . $wittypi_dir/wittyPi.conf
+fi
+
+# If log-file name and path is not defined, set it to the standard location
+if [ -z "$WITTYPI_LOG_FILE" ] ; then
+  WITTYPI_LOG_FILE=$wittypi_dir/wittyPi.log
+fi
+# If schedule-log-file name and path is not defined, set it to the standard location
+if [ -z "$SCHEDULE_LOG_FILE" ] ; then
+  SCHEDULE_LOG_FILE=$wittypi_dir/schedule.log
+fi
+# If schedule.wpi filename and path is not defined, set it to the standard location
+if [ -z "$SCHEDULE_FILE" ] ; then
+  SCHEDULE_FILE=$wittypi_dir/schedule.wpi
+fi
+# If path to library of schedule files is not defined, set it to the standard location
+if [ -z "$SCHEDULES_DIR" ] ; then
+  SCHEDULES_DIR=$wittypi_dir/schedules
+fi
+
+if [ ! -f $WITTYPI_LOG_FILE ] ; then
+  touch $WITTYPI_LOG_FILE
+fi
+if [ ! -f $SCHEDULE_LOG_FILE ] ; then
+  touch $SCHEDULE_LOG_FILE
+fi
 
 
 if [ $(is_mc_connected) -ne 1 ]; then
@@ -64,7 +96,7 @@ schedule_startup()
   else
     echo "  Auto startup time is currently set to \"$startup_time\""
   fi
-  if [ -f "$my_dir/schedule.wpi" ]; then
+  if [ -f "$SHCEDULE_FILE" ]; then
       echo '  [WARNING] Your manual scheduling may disturb the running schedule script!'
   fi
   read -p '  When do you want your Raspberry Pi to auto startup? (dd HH:MM:SS) ' when
@@ -100,7 +132,7 @@ schedule_shutdown()
   else
     echo -e "  Auto shutdown time is currently set to \"$shutdown_time\""
   fi
-  if [ -f "$my_dir/schedule.wpi" ]; then
+  if [ -f "$SCHEDULE_FILE" ]; then
       echo '  [WARNING] Your manual scheduling may disturb the running schedule script!'
   fi
   read -p '  When do you want your Raspberry Pi to auto shutdown? (dd HH:MM:SS) ' when
@@ -132,7 +164,7 @@ choose_schedule_script()
 {
   local res=$(check_sys_and_rtc_time)
   if [ -z "$res" ]; then
-    local files=($SCHEDULE_DIR/*.wpi)
+    local files=($SCHEDULES_DIR/*.wpi)
     local count=${#files[@]}
     echo "  I can see $count schedule scripts in the \"schedules\" directory:"
     for (( i=0; i<$count; i++ ));
@@ -142,10 +174,10 @@ choose_schedule_script()
     read -p "  Which schedule script do you want to use? (1~$count) " index
     if [[ $index =~ [0-9]+ ]] && [ $(($index >= 1)) == '1' ] && [ $(($index <= $count)) == '1' ] ; then
       local script=${files[$((index-1))]};
-      log "  Copying \"${script##*/}\" to \"schedule.wpi\"..."
+      log "  Copying \"${script##*/}\" to \"$SCHEDULE_FILE\"..."
       cp ${script} "$SCHEDULE_FILE"
       log '  Running the script...'
-      . "$my_dir/runScript.sh" | tee -a "$SCHEDULE_LOG_FILE"
+      . "$wittypi_dir/runScript.sh" | tee -a "$SCHEDULE_LOG_FILE"
       log '  Done :-)'
     else
       echo "  \"$index\" is not a good choice, I need a number from 1 to $count"

@@ -11,13 +11,41 @@ if [ ! -z "$1" ]; then
 fi
 
 # get current directory and schedule file path
-cur_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-#SCHEDULE_FILE="$cur_dir/schedule.wpi"
+wittypi_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+#SCHEDULE_FILE="$wittypi_dir/schedule.wpi"
 
 # utilities
-. "$cur_dir/utilities.sh"
-. "$cur_dir/wittyPi.conf"
+. "$wittypi_dir/utilities.sh"
 
+
+# include wittyPi.conf script if it exists
+if [ -f "$wittypi_dir/wittyPi.conf" ]; then
+  . $wittypi_dir/wittyPi.conf
+fi
+
+# If log-file name and path is not defined, set it to the standard location
+if [ -z "$WITTYPI_LOG_FILE" ] ; then
+  WITTYPI_LOG_FILE=$wittypi_dir/wittyPi.log
+fi
+# If schedule-log-file name and path is not defined, set it to the standard location
+if [ -z "$SCHEDULE_LOG_FILE" ] ; then
+  SCHEDULE_LOG_FILE=$wittypi_dir/schedule.log
+fi
+# If schedule.wpi filename and path is not defined, set it to the standard location
+if [ -z "$SCHEDULE_FILE" ] ; then
+  SCHEDULE_FILE=$wittypi_dir/schedule.wpi
+fi
+# If path to library of schedule files is not defined, set it to the standard location
+if [ -z "$SCHEDULES_DIR" ] ; then
+  SCHEDULES_DIR=$wittypi_dir/schedule
+fi
+
+if [ ! -f $WITTYPI_LOG_FILE ] ; then
+  touch $WITTYPI_LOG_FILE
+fi
+if [ ! -f $SCHEDULE_LOG_FILE ] ; then
+  touch $SCHEDULE_LOG_FILE
+fi
 
 
 # pending until system time gets initialized
@@ -199,7 +227,7 @@ if [ -f $SCHEDULE_FILE ]; then
     fi
   fi
 else
-  log "File \"schedule.wpi\" not found, skip running schedule script."
+  log "File \"$SCHEDULE_FILE\" not found, skip running schedule script."
 fi
 
 echo '---------------------------------------------------'
