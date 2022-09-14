@@ -160,7 +160,7 @@ fi
 
 # delay until GPIO pin state gets stable
 counter=0
-while [ $counter -lt 20 ]; do  # increase this value if it needs more time
+while [ $counter -lt 10 ]; do  # increase this value if it needs more time
   if [ $(gpio -g read $HALT_PIN) == '1' ] ; then
     counter=$(($counter+1))
   else
