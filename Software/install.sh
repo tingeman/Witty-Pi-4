@@ -21,6 +21,9 @@ fi
 # by pass definitions below.
 if [[ -z $WITTYPI_USE_GLOBAL_SETTINGS || $WITTYPI_USE_GLOBAL_SETTINGS -ne true ]]; then
 
+  echo "THIS SCRIPT MUST BE CALLED FROM THE dtu-ert-pi INSTALL SCRIPT... ABORTING."
+  exit 1
+
   CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
   WITTYPI_DIR="$CURRENT_DIR"/wittypi
   TMP_DIR="$CURRENT_DIR"/tmp
@@ -155,7 +158,7 @@ if [ $ERR_WPI -eq 0 ]; then
     #wget https://www.uugear.com/repo/WittyPi4/LATEST -O wittyPi.zip || ((ERR_WPI++))
     wget $WITTYPI_DOWNLOAD_URL -O "$TMP_DIR"/wittyPi.zip || ((ERR_WPI++))
     unzip -q "$TMP_DIR"/wittyPi.zip -d "$TMP_DIR"/ || ((ERR_WPI++))
-    SRC_DIR="$TMP_DIR"/Witty-Pi-4-main
+    SRC_DIR="$TMP_DIR"/"Witty-Pi-4-"$(basename $WITTYPI_DOWNLOAD_URL .zip)
     cp -rf "$SRC_DIR"/Software/wittypi/* "$WITTYPI_DIR"/
     cd "$WITTYPI_DIR"
     chmod +x wittyPi.sh
