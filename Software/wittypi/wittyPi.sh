@@ -13,7 +13,7 @@ echo '==========================================================================
 echo '|                                                                              |'
 echo '|   Witty Pi - Realtime Clock + Power Management for Raspberry Pi              |'
 echo '|                                                                              |'
-echo '|            < Version 4.00 >     by Dun Cat B.V. (UUGear)                     |'
+echo '|            < Version 4.10 >     by Dun Cat B.V. (UUGear)                     |'
 echo '|                                                                              |'
 echo '================================================================================'
 
@@ -74,6 +74,7 @@ fi
 
 if [ $(is_mc_connected) -eq 1 ]; then
   firmwareID=$(i2c_read 0x01 $I2C_MC_ADDRESS $I2C_ID)
+  firmwareRev=$(i2c_read 0x01 $I2C_MC_ADDRESS $I2C_FW_REVISION)
 fi
 
 # interactive actions
@@ -189,33 +190,65 @@ choose_schedule_script()
 
 configure_low_voltage_threshold()
 {
-  read -p 'Input low voltage (2.0~25.0, value in volts, 0=Disabled): ' threshold
-  if (( $(awk "BEGIN {print ($threshold >= 2.0 && $threshold <= 25.0)}") )); then
-    local t=$(calc $threshold*10)
-    set_low_voltage_threshold ${t%.*}
-    local ts=$(printf 'Low voltage threshold set to %.1fV!\n' $threshold)
-    log "  $ts" && sleep 2
-  elif (( $(awk "BEGIN {print ($threshold == 0)}") )); then
-    i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_LOW_VOLTAGE 0xFF
-    log 'Disabled low voltage threshold!' && sleep 2
+  if [ $(($firmwareID)) -eq 55 ]; then
+    read -p 'Input low voltage (3.0~4.2, value in volts, 0=Disabled): ' threshold
+    if (( $(awk "BEGIN {print ($threshold >= 3.0 && $threshold <= 4.2)}") )); then
+      local t=$(calc $threshold*10)
+      set_low_voltage_threshold ${t%.*}
+      local ts=$(printf 'Low voltage threshold set to %.1fV!\n' $threshold)
+      log "  $ts" && sleep 2
+    elif (( $(awk "BEGIN {print ($threshold == 0)}") )); then
+      i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_LOW_VOLTAGE 0xFF
+      log 'Disabled low voltage threshold!' && sleep 2
+    else
+      echo 'Please input from 3.0 to 4.2 ...' && sleep 2
+    fi
   else
-    echo 'Please input from 2.0 to 25.0 ...' && sleep 2
+    read -p 'Input low voltage (2.0~25.0, value in volts, 0=Disabled): ' threshold
+    if (( $(awk "BEGIN {print ($threshold >= 2.0 && $threshold <= 25.0)}") )); then
+      local t=$(calc $threshold*10)
+      set_low_voltage_threshold ${t%.*}
+      local ts=$(printf 'Low voltage threshold set to %.1fV!\n' $threshold)
+      log "  $ts" && sleep 2
+    elif (( $(awk "BEGIN {print ($threshold == 0)}") )); then
+      i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_LOW_VOLTAGE 0xFF
+      log 'Disabled low voltage threshold!' && sleep 2
+    else
+      echo 'Please input from 2.0 to 25.0 ...' && sleep 2
+    fi
   fi
 }
 
 configure_recovery_voltage_threshold()
 {
-  read -p 'Input recovery voltage (2.0~25.0, value in volts, 0=Disabled): ' threshold
-  if (( $(awk "BEGIN {print ($threshold >= 2.0 && $threshold <= 25.0)}") )); then
-    local t=$(calc $threshold*10)
-    set_recovery_voltage_threshold ${t%.*}
-    local ts=$(printf 'Recovery voltage threshold set to %.1fV!\n' $threshold)
-    log "  $ts" && sleep 2
-  elif (( $(awk "BEGIN {print ($threshold == 0)}") )); then
-    i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_RECOVERY_VOLTAGE 0xFF
-    log 'Disabled recovery voltage threshold!' && sleep 2
+  if [ $(($firmwareID)) -eq 55 ]; then
+    # Witty Pi 4 L3V7
+    read -p 'Turn on RPi when USB 5V is connected (0=No, 1=Yes): ' action
+    if [ "$action" == '0' ]; then
+      i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_RECOVERY_VOLTAGE 0
+      echo '  Will do nothing when USB 5V is connected.'
+      sleep 2
+    elif [ "$action" == '1' ]; then
+      i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_RECOVERY_VOLTAGE 1
+      echo '  Will turn on RPi when USB 5V is connected.'
+      sleep 2
+    else
+      echo 'Please input 0 or 1'
+    fi
   else
-    echo 'Please input from 2.0 to 25.0 ...' && sleep 2
+    # Witty Pi 4 and Mini
+    read -p 'Input recovery voltage (2.0~25.0, value in volts, 0=Disabled): ' threshold
+    if (( $(awk "BEGIN {print ($threshold >= 2.0 && $threshold <= 25.0)}") )); then
+      local t=$(calc $threshold*10)
+      set_recovery_voltage_threshold ${t%.*}
+      local ts=$(printf 'Recovery voltage threshold set to %.1fV!\n' $threshold)
+      log "  $ts" && sleep 2
+    elif (( $(awk "BEGIN {print ($threshold == 0)}") )); then
+      i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_RECOVERY_VOLTAGE 0xFF
+      log 'Disabled recovery voltage threshold!' && sleep 2
+    else
+      echo 'Please input from 2.0 to 25.0 ...' && sleep 2
+    fi
   fi
 }
 
@@ -274,7 +307,7 @@ set_default_state()
 set_power_cut_delay()
 {
   local maxVal='8.0';
-  if [ $(($firmwareID)) -ge 35 ]; then
+	if [ $(($firmwareID)) -ge 53 ]; then
     maxVal='25.0'
   fi
   read -p "Input new delay (0.0~$maxVal: value in seconds): " delay
@@ -289,44 +322,44 @@ set_power_cut_delay()
 
 set_pulsing_interval()
 {
-  read -p 'Input new interval (value in seconds, 1~20): ' interval
-  if [ $interval -ge 1 ] && [ $interval -le 20 ]; then
-    i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_PULSE_INTERVAL $interval
-    log "Pulsing interval set to $interval seconds!" && sleep 2
-  else
-    echo 'Please input from 1 to 20' && sleep 2
-  fi
+	read -p 'Input new interval (value in seconds, 1~20): ' interval
+	if [ $interval -ge 1 ] && [ $interval -le 20 ]; then
+	  i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_PULSE_INTERVAL $interval
+	  log "Pulsing interval set to $interval seconds!" && sleep 2
+	else
+	  echo 'Please input from 1 to 20' && sleep 2
+	fi
 }
 
 set_white_led_duration()
 {
-  read -p 'Input new duration for white LED (value in milliseconds, 0~254): ' duration
-  if [ $duration -ge 0 ] && [ $duration -le 254 ]; then
-    i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_BLINK_LED $duration
-    log "White LED duration set to $duration!" && sleep 2
-  else
-    echo 'Please input from 0 to 254' && sleep 2
-  fi
+	read -p 'Input new duration for white LED (value in milliseconds, 0~254): ' duration
+	if [ $duration -ge 0 ] && [ $duration -le 254 ]; then
+		i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_BLINK_LED $duration
+		log "White LED duration set to $duration!" && sleep 2
+	else
+	  echo 'Please input from 0 to 254' && sleep 2
+	fi
 }
 
 set_dummy_load_duration()
 {
-  read -p 'Input new duration for dummy load (value in milliseconds, 0~254): ' duration
-  if [ $duration -ge 0 ] && [ $duration -le 254 ]; then
-    i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_DUMMY_LOAD $duration
-    log "Dummy load duration set to $duration!" && sleep 2
-  else
-    echo 'Please input from 0 to 254' && sleep 2
-  fi
+	read -p 'Input new duration for dummy load (value in milliseconds, 0~254): ' duration
+	if [ $duration -ge 0 ] && [ $duration -le 254 ]; then
+		i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_DUMMY_LOAD $duration
+		log "Dummy load duration set to $duration!" && sleep 2
+	else
+	  echo 'Please input from 0 to 254' && sleep 2
+	fi
 }
 
 set_vin_adjustment()
 {
-  read -p 'Input Vin adjustment (-1.27~1.27: value in volts): ' vinAdj
+	read -p 'Input Vin adjustment (-1.27~1.27: value in volts): ' vinAdj
   if (( $(awk "BEGIN {print ($vinAdj >= -1.27 && $vinAdj <= 1.27)}") )); then
     local adj=$(calc $vinAdj*100)
     if (( $(awk "BEGIN {print ($adj < 0)}") )); then
-      adj=$((255+$adj))
+    	adj=$((255+$adj))
     fi
     i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_ADJ_VIN ${adj%.*}
     local setting=$(printf 'Vin adjustment set to %.2fV!\n' $vinAdj)
@@ -338,11 +371,11 @@ set_vin_adjustment()
 
 set_vout_adjustment()
 {
-  read -p 'Input Vout adjustment (-1.27~1.27: value in volts): ' voutAdj
+	read -p 'Input Vout adjustment (-1.27~1.27: value in volts): ' voutAdj
   if (( $(awk "BEGIN {print ($voutAdj >= -1.27 && $voutAdj <= 1.27)}") )); then
     local adj=$(calc $voutAdj*100)
     if (( $(awk "BEGIN {print ($adj < 0)}") )); then
-      adj=$((255+$adj))
+    	adj=$((255+$adj))
     fi
     i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_ADJ_VOUT ${adj%.*}
     local setting=$(printf 'Vout adjustment set to %.2fV!\n' $voutAdj)
@@ -354,17 +387,32 @@ set_vout_adjustment()
 
 set_iout_adjustment()
 {
-  read -p 'Input Iout adjustment (-1.27~1.27: value in amps): ' ioutAdj
+	read -p 'Input Iout adjustment (-1.27~1.27: value in amps): ' ioutAdj
   if (( $(awk "BEGIN {print ($ioutAdj >= -1.27 && $ioutAdj <= 1.27)}") )); then
     local adj=$(calc $ioutAdj*100)
     if (( $(awk "BEGIN {print ($adj < 0)}") )); then
-      adj=$((255+$adj))
+    	adj=$((255+$adj))
     fi
     i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_ADJ_IOUT ${adj%.*}
     local setting=$(printf 'Iout adjustment set to %.2fA!\n' $ioutAdj)
     log "$setting" && sleep 2
   else
     echo 'Please input from -1.27 to 1.27 ...' && sleep 2
+  fi
+}
+
+set_default_on_delay()
+{
+  if [ $(($firmwareRev)) -ge 2 ]; then
+    read -p 'Wait how many seconds before Auto-ON (0~10): ' delay
+  	if [ $delay -ge 0 ] && [ $delay -le 10 ]; then
+  	  i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_DEFAULT_ON_DELAY $delay
+  	  log "Default ON delay set to $delay seconds!" && sleep 2
+  	else
+  	  echo 'Please input from 0 to 10' && sleep 2
+  	fi
+  else
+    echo 'Please choose from 1 to 8';
   fi
 }
 
@@ -375,7 +423,7 @@ other_settings()
   local ds=$(i2c_read 0x01 $I2C_MC_ADDRESS $I2C_CONF_DEFAULT_ON)
   if [[ $ds -eq 0 ]]; then
     echo ' [default OFF]'
-  else
+	else
     echo ' [default ON]'
   fi
   echo -n '  [2] Power cut delay after shutdown'
@@ -395,28 +443,36 @@ other_settings()
   echo -n '  [6] Vin adjustment'
   local vinAdj=$(i2c_read 0x01 $I2C_MC_ADDRESS $I2C_CONF_ADJ_VIN)
   if [[ $vinAdj -gt 127 ]]; then
-    vinAdj=$(calc $(($vinAdj-255))/100)
-  else
-    vinAdj=$(calc $(($vinAdj))/100)
+  	vinAdj=$(calc $(($vinAdj-255))/100)
+ 	else
+ 		vinAdj=$(calc $(($vinAdj))/100)
   fi
   printf ' [%.2fV]\n' "$vinAdj"
   echo -n '  [7] Vout adjustment'
   local voutAdj=$(i2c_read 0x01 $I2C_MC_ADDRESS $I2C_CONF_ADJ_VOUT)
   if [[ $voutAdj -gt 127 ]]; then
-    voutAdj=$(calc $(($voutAdj-255))/100)
-  else
-    voutAdj=$(calc $(($voutAdj))/100)
+  	voutAdj=$(calc $(($voutAdj-255))/100)
+ 	else
+ 		voutAdj=$(calc $(($voutAdj))/100)
   fi
   printf ' [%.2fV]\n' "$voutAdj"
   echo -n '  [8] Iout adjustment'
   local ioutAdj=$(i2c_read 0x01 $I2C_MC_ADDRESS $I2C_CONF_ADJ_IOUT)
   if [[ $ioutAdj -gt 127 ]]; then
-    ioutAdj=$(calc $(($ioutAdj-255))/100)
-  else
-    ioutAdj=$(calc $(($ioutAdj))/100)
+  	ioutAdj=$(calc $(($ioutAdj-255))/100)
+ 	else
+ 		ioutAdj=$(calc $(($ioutAdj))/100)
   fi
   printf ' [%.2fA]\n' "$ioutAdj"
-  read -p "Which parameter to set? (1~8) " action
+  local optionCount=8;
+  if [ $(($firmwareRev)) -ge 2 ]; then
+    echo -n '  [9] Default ON delay'
+    local dod=$(i2c_read 0x01 $I2C_MC_ADDRESS $I2C_CONF_DEFAULT_ON_DELAY)
+    dod=$(hex2dec $dod)
+    echo " [$dod Seconds]"
+    optionCount=9;
+  fi
+  read -p "Which parameter to set? (1~$optionCount) " action
   case $action in
       [1]* ) set_default_state;;
       [2]* ) set_power_cut_delay;;
@@ -426,7 +482,8 @@ other_settings()
       [6]* ) set_vin_adjustment;;
       [7]* ) set_vout_adjustment;;
       [8]* ) set_iout_adjustment;;
-      * ) echo 'Please choose from 1 to 8';;
+      [9]* ) set_default_on_delay;;
+      * ) echo "Please choose from 1 to $optionCount";;
   esac
 }
 
@@ -501,7 +558,11 @@ reset_data()
   echo '  [2] Clear scheduled shutdown time'
   echo '  [3] Stop using schedule script'
   echo '  [4] Clear low voltage threshold'
-  echo '  [5] Clear recovery voltage threshold'
+  if [ $(($firmwareID)) -eq 55 ]; then
+    echo '  [5] Restore action when USB power is connected'
+  else
+    echo '  [5] Clear recovery voltage threshold'
+  fi
   echo '  [6] Clear over temperature action'
   echo '  [7] Clear below temperature action'
   echo '  [8] Perform all actions above'
@@ -542,10 +603,21 @@ while true; do
     vout=$(get_output_voltage)
     iout=$(get_output_current)
     voltages=">>> "
-    if [ $(get_power_mode) -eq 1 ]; then
-      voltages+="Vin=$(printf %.02f $vin)V, "
-    fi
+    if [ $(get_power_mode) -ne 0 ]; then
+		  voltages+="Vin=$(printf %.02f $vin)V, "
+		fi
     voltages+="Vout=$(printf %.02f $vout)V, Iout=$(printf %.02f $iout)A"
+    
+    if [ $(($firmwareID)) -eq 55 ]; then
+      chrg=$(gpio -g read $CHRG_PIN)
+      stdby=$(gpio -g read $STDBY_PIN)
+      if [ "$chrg" == "1" ] && [ "$stdby" == "1" ]; then
+        voltages+=" (discharging battery...)"
+      elif [ "$chrg" == "0" ] && [ "$stdby" == "1" ]; then
+        voltages+=" (charging battery...)"  
+      fi
+    fi
+    
     echo "$voltages"
   fi
 
@@ -575,18 +647,28 @@ while true; do
     echo ''
   fi
   echo -n '  7. Set low voltage threshold'
-    lowVolt=$(get_low_voltage_threshold)
+	lowVolt=$(get_low_voltage_threshold)
   if [ ${#lowVolt} == '8' ]; then
     echo ''
   else
     echo "  [$lowVolt]";
   fi
-  echo -n '  8. Set recovery voltage threshold'
-  recVolt=$(get_recovery_voltage_threshold)
-  if [ ${#recVolt} == '8' ]; then
-    echo ''
+  if [ $(($firmwareID)) -eq 55 ]; then
+    echo -n '  8. Auto-On when USB 5V is connected'
+    recV=$(i2c_read 0x01 $I2C_MC_ADDRESS $I2C_CONF_RECOVERY_VOLTAGE)
+    if [ $(($recV)) -gt 0 ]; then
+      echo "  [Yes]";
+    else
+      echo "  [No]";
+    fi
   else
-    echo "  [$recVolt]";
+    echo -n '  8. Set recovery voltage threshold'
+    recVolt=$(get_recovery_voltage_threshold)
+    if [ ${#recVolt} == '8' ]; then
+      echo ''
+    else
+      echo "  [$recVolt]";
+    fi
   fi
   echo -n '  9. Set over temperature action'
   ota=$(over_temperature_action)
