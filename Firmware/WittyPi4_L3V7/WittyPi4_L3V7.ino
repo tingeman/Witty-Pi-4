@@ -1,5 +1,5 @@
 /**
- * Firmware for WittyPi 4
+ * Firmware for WittyPi 4 L3V7
  * 
  * Revision: 2
  */
@@ -44,14 +44,14 @@
 /*
  * read-only registers
  */
-#define I2C_ID                      0   // firmware id
+#define I2C_ID                      0   // firmware id: 0x37 (Witty Pi 4 L3V7)
 #define I2C_VOLTAGE_IN_I            1   // integer part for input voltage
 #define I2C_VOLTAGE_IN_D            2   // decimal part (x100) for input voltage
 #define I2C_VOLTAGE_OUT_I           3   // integer part for output voltage
 #define I2C_VOLTAGE_OUT_D           4   // decimal part (x100) for output voltage
 #define I2C_CURRENT_OUT_I           5   // integer part for output current
 #define I2C_CURRENT_OUT_D           6   // decimal part (x100) for output current
-#define I2C_POWER_MODE              7   // 1 if Witty Pi is powered via the DC input, 0 if direclty use 5V input
+#define I2C_POWER_MODE              7   // 0 if Witty Pi is powered with USB-C 5V, 2 if Witty Pi is powered with 3.7V battery
 #define I2C_LV_SHUTDOWN             8   // 1 if system was shutdown by low voltage, otherwise 0
 #define I2C_ALARM1_TRIGGERED        9   // 1 if alarm1 (startup) has been triggered
 #define I2C_ALARM2_TRIGGERED        10  // 1 if alarm2 (shutdown) has been triggered
@@ -70,7 +70,7 @@
 #define I2C_CONF_LOW_VOLTAGE        19  // low voltage threshold (x10), 255=disabled
 #define I2C_CONF_BLINK_LED          20  // how long the white LED should stay on (in ms), 0 if white LED should not blink.
 #define I2C_CONF_POWER_CUT_DELAY    21  // the delay (x10) before power cut: default=50 (5 sec)
-#define I2C_CONF_RECOVERY_VOLTAGE   22  // voltage (x10) that triggers recovery, 255=disabled
+#define I2C_CONF_RECOVERY_VOLTAGE   22  // set to non-zero value to wake up RPi when USB 5V is connected, default=255
 #define I2C_CONF_DUMMY_LOAD         23  // how long the dummy load should be applied (in ms), 0 if dummy load is off.
 #define I2C_CONF_ADJ_VIN            24  // adjustment for measured Vin (x100), range from -127 to 127
 #define I2C_CONF_ADJ_VOUT           25  // adjustment for measured Vout (x100), range from -127 to 127
@@ -145,6 +145,7 @@
 #define REASON_OVER_TEMPERATURE   6
 #define REASON_BELOW_TEMPERATURE  7
 #define REASON_ALARM1_DELAYED     8
+#define REASON_USB_5V_CONNECTED   9
 
 volatile byte i2cReg[I2C_REG_COUNT];
 
@@ -169,6 +170,8 @@ volatile boolean ledIsOn = false;
 volatile unsigned long buttonStateChangeTime = 0;
 
 volatile unsigned long voltageQueryTime = 0;
+
+volatile unsigned long getVinTime = 0;
 
 volatile unsigned int powerCutDelay = 0;
 
@@ -248,32 +251,24 @@ void loop() {
   if (voltageQueryTime > curTime || curTime - voltageQueryTime >= 1000000) {
     voltageQueryTime = curTime;
 
-    // if input voltage is not fixed 5V, detect low voltage
-    if (powerIsOn && systemIsUp 
-        && (i2cReg[I2C_POWER_MODE] == 1 || i2cReg[I2C_CONF_IGNORE_POWER_MODE] == 1)
-        && (i2cReg[I2C_LV_SHUTDOWN] == 0 || i2cReg[I2C_CONF_IGNORE_LV_SHUTDOWN] == 1)
-        && i2cReg[I2C_CONF_LOW_VOLTAGE] != 255) {
-      float vin = getInputVoltage();
-      float vlow = ((float)i2cReg[I2C_CONF_LOW_VOLTAGE]) / 10;
-      if (vin < vlow) {  // input voltage is below the low voltage threshold
-        updateRegister(I2C_LV_SHUTDOWN, 1);
-        updateRegister(I2C_ACTION_REASON, REASON_LOW_VOLTAGE);
-        emulateButtonClick();
-      }
-    }
+    updatePowerMode();
+
+    detectLowVoltage();
   }
 }
 
 
 // initialize the registers and synchronize with EEPROM
 void initializeRegisters() {
-  i2cReg[I2C_ID] = 0x26;
+  // firmware id: 0x37 (Witty Pi 4 L3V7)
+  i2cReg[I2C_ID] = 0x37;  
+  
   i2cReg[I2C_FW_REVISION] = 0x02;
   
   i2cReg[I2C_CONF_ADDRESS] = 0x08;
 
   i2cReg[I2C_CONF_PULSE_INTERVAL] = 4;
-  i2cReg[I2C_CONF_LOW_VOLTAGE] = 255;
+  i2cReg[I2C_CONF_LOW_VOLTAGE] = 31;
   i2cReg[I2C_CONF_BLINK_LED] = 100;
   i2cReg[I2C_CONF_POWER_CUT_DELAY] = 50;
   i2cReg[I2C_CONF_RECOVERY_VOLTAGE] = 255;
@@ -375,19 +370,13 @@ void sleep() {
           cutPower();
         }
 
-        // update power mode and get input voltage
-        float vin = updatePowerMode();
-  
-        // check input voltage if shutdown because of low voltage, and recovery voltage has been set
-        // will skip checking I2C_LV_SHUTDOWN if I2C_CONF_LOW_VOLTAGE is set to 0xFF
-        if ((i2cReg[I2C_POWER_MODE] == 1 || i2cReg[I2C_CONF_IGNORE_POWER_MODE] == 1)
-            && (i2cReg[I2C_LV_SHUTDOWN] == 1 || i2cReg[I2C_CONF_LOW_VOLTAGE] == 255 || i2cReg[I2C_CONF_IGNORE_LV_SHUTDOWN] == 1) 
-            && i2cReg[I2C_CONF_RECOVERY_VOLTAGE] != 255) {
-          float vrec = ((float)i2cReg[I2C_CONF_RECOVERY_VOLTAGE]) / 10;
-          if (vin >= vrec) {
-            wakeupByWatchdog = false;       // recovery from low voltage shutdown
-            updateRegister(I2C_ACTION_REASON, REASON_VOLTAGE_RESTORE);
-          }
+        // update power mode, and wake up when USB 5V is connected
+        byte prevMode = i2cReg[I2C_POWER_MODE];
+        updatePowerMode();
+        if (i2cReg[I2C_CONF_RECOVERY_VOLTAGE] != 0 && prevMode == 2 && i2cReg[I2C_POWER_MODE] == 0) {
+          delay(i2cReg[I2C_CONF_DEFAULT_ON_DELAY] * 1000);
+          wakeupByWatchdog = false;       // recovery when USB 5V is connected
+          updateRegister(I2C_ACTION_REASON, REASON_USB_5V_CONNECTED);
         }
       }
     }
@@ -465,21 +454,56 @@ float getAdjustValue(byte regId) {
 
 // update power mode according to input voltage, and return the input voltage
 float updatePowerMode() {
-  byte bk = ADCSRA;
-  ADCSRA |= _BV(ADEN);
-  float vin = getAdcVoltageAtPin(PIN_VIN);
-  ADCSRA = bk;  
-  updateRegister(I2C_POWER_MODE, (vin > 5.25f) ? 1 : 0);
+  float vin = turnOnAdcAndGetInputVoltage();
+  updateRegister(I2C_POWER_MODE, vin < 4.25f ? 2 : 0);
   return vin;
 }
 
 
-// get input voltage
+// if USB 5V is not connected, detect low voltage
+// return:  0 if detection is not performed
+//          1 if low voltage is detected
+//          2 if low voltage is not detected
+byte detectLowVoltage() {
+  if (powerIsOn && systemIsUp 
+      && (i2cReg[I2C_POWER_MODE] != 0 || i2cReg[I2C_CONF_IGNORE_POWER_MODE] == 1)
+      && (i2cReg[I2C_LV_SHUTDOWN] == 0 || i2cReg[I2C_CONF_IGNORE_LV_SHUTDOWN] == 1)
+      && i2cReg[I2C_CONF_LOW_VOLTAGE] != 255) {
+    float vin = getInputVoltage();
+    float vlow = ((float)i2cReg[I2C_CONF_LOW_VOLTAGE]) / 10;
+    if (vin < vlow) {  // input voltage is below the low voltage threshold
+      updateRegister(I2C_LV_SHUTDOWN, 1);
+      updateRegister(I2C_ACTION_REASON, REASON_LOW_VOLTAGE);
+      emulateButtonClick();
+      return 1;
+    }
+    return 2;
+  } else {
+    return 0;
+  }
+}
+
+
+// get input voltage, will return previous value if it was measured within one second
+// will update the register when new measurement is done
 float getInputVoltage() {
+  unsigned long curTime = micros();
+  if (getVinTime > curTime || curTime - getVinTime >= 1000000) {
+    getVinTime = curTime;
+    float v = getInputVoltageWithoutUpdateReg();
+    updateRegister(I2C_VOLTAGE_IN_I, getIntegerPart(v));
+    updateRegister(I2C_VOLTAGE_IN_D, getDecimalPart(v));
+    return v;
+  } else {
+    return (float)i2cReg[I2C_VOLTAGE_IN_I] + ((float)i2cReg[I2C_VOLTAGE_IN_D]) / 100;
+  }
+}
+
+
+// get input voltage, without caching and do not update the register
+float getInputVoltageWithoutUpdateReg() {
   float v = getAdcVoltageAtPin(PIN_VIN);
   v += getAdjustValue(I2C_CONF_ADJ_VIN);
-  updateRegister(I2C_VOLTAGE_IN_I, getIntegerPart(v));
-  updateRegister(I2C_VOLTAGE_IN_D, getDecimalPart(v));
   return v;
 }
 
@@ -596,7 +620,9 @@ void requestEvent() {
   float v = 0.0;
   switch (i2cIndex) {
     case I2C_VOLTAGE_IN_I:
-      getInputVoltage();
+      if (detectLowVoltage() == 0) {
+        getInputVoltage();
+      }
       break;
     case I2C_VOLTAGE_OUT_I:
       getOutputVoltage();
@@ -719,18 +745,15 @@ ISR (PCINT1_vect) {
       buttonPressed = false;
     }
     
-    if (powerIsOn && listenToTxd && !turningOff && !systemIsUp && digitalRead(PIN_SYS_UP) == 1)  {  // system is up, PCINT8
+    if (powerIsOn && !turningOff && digitalRead(PIN_SYS_UP) == 1)  {  // system is up, PCINT8
       
       // clear the low-voltage shutdown flag when sys_up signal arrives
-      if (systemIsUp == false) {
-        updateRegister(I2C_LV_SHUTDOWN, 0);
-      }
+      updateRegister(I2C_LV_SHUTDOWN, 0);
 
-      // mark system is up
-      systemIsUp = true;
-      
-      // turn off the white LED
-      ledOff();
+      if (!systemIsUp) {
+        // mark system is up
+        systemIsUp = true;
+      }
     }
   }
 }
@@ -779,7 +802,7 @@ void emulateButtonClick() {
 float turnOnAdcAndGetInputVoltage() {
   byte bk = ADCSRA;
   ADCSRA |= _BV(ADEN);
-  float vin = getInputVoltage();
+  float vin = getInputVoltageWithoutUpdateReg();
   ADCSRA = bk;
   return vin;
 }
@@ -794,10 +817,7 @@ boolean canTriggerAlarm() {
   float vlow = ((float)i2cReg[I2C_CONF_LOW_VOLTAGE]) / 10;
   if (i2cReg[I2C_LV_SHUTDOWN] == 1) {
     if (vin > vlow) {
-      float vrec = ((float)i2cReg[I2C_CONF_RECOVERY_VOLTAGE]) / 10;
-      if (i2cReg[I2C_CONF_RECOVERY_VOLTAGE] == 255 || vin > vrec) {
-        return true;
-      }
+      return true;
     }
   } else {
     if (vin > vlow || i2cReg[I2C_CONF_LOW_VOLTAGE] == 255) {
