@@ -25,7 +25,9 @@ if [[ -z $WITTYPI_USE_GLOBAL_SETTINGS || $WITTYPI_USE_GLOBAL_SETTINGS -ne true ]
   WITTYPI_DIR="$CURRENT_DIR"/wittypi
   TMP_DIR="$CURRENT_DIR"/tmp
 
-  WITTYPI_DOWNLOAD_URL="https://github.com/tingeman/Witty-Pi-4/archive/refs/heads/main.zip"
+  FORCE_WITTYPI_INSTALL=false
+  WITTYPI_BRANCH=main
+  WITTYPI_DOWNLOAD_URL="https://github.com/tingeman/Witty-Pi-4/archive/refs/heads/$WITTYPI_BRANCH.zip"
   # To install UUGEAR latest version instead, uncomment the following line:
   # WITTYPI_DOWNLOAD_URL="https://www.uugear.com/repo/WittyPi4/LATEST"
   # NB will require also changes to the unpacking commands etc. ...
@@ -141,9 +143,10 @@ else
 fi
 
 # install wittyPi
+if [[ -z $WITTYPI_USE_GLOBAL_SETTINGS || $WITTYPI_USE_GLOBAL_SETTINGS -ne true ]]; then
 if [ $ERR_WPI -eq 0 ]; then
   echo '>>> Install wittypi'
-  if [ -d "$WITTYPI_DIR" ]; then
+  if [[ -d "$WITTYPI_DIR" && $FORCE_WITTYPI_INSTALL -eq false]; then
     echo 'Seems wittypi is installed already, skip this step.'
   else
     if [[ ! -d "$TMP_DIR" ]]; then
@@ -155,7 +158,7 @@ if [ $ERR_WPI -eq 0 ]; then
     #wget https://www.uugear.com/repo/WittyPi4/LATEST -O wittyPi.zip || ((ERR_WPI++))
     wget $WITTYPI_DOWNLOAD_URL -O "$TMP_DIR"/wittyPi.zip || ((ERR_WPI++))
     unzip -q "$TMP_DIR"/wittyPi.zip -d "$TMP_DIR"/ || ((ERR_WPI++))
-    SRC_DIR="$TMP_DIR"/Witty-Pi-4-main
+    SRC_DIR="$TMP_DIR"/Witty-Pi-4-"$WITTYPI_BRANCH"
     cp -rf "$SRC_DIR"/Software/wittypi/* "$WITTYPI_DIR"/
     cd "$WITTYPI_DIR"
     chmod +x wittyPi.sh
