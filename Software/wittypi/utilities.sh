@@ -25,7 +25,7 @@ fi
 
 # If log-file name and path is not defined, set it to the standard location
 if [ -z "$WITTYPI_LOG_FILE" ] ; then
-  WITTYPI_LOG_FILE=$wittypi_dir/wittyPi.log
+  WITTYPI_LOG_FILE="$wittypi_dir/wittyPi.log"
 fi
 if [ ! -f $WITTYPI_LOG_FILE ] ; then
   touch $WITTYPI_LOG_FILE
