@@ -5,6 +5,9 @@
 # This script will install required software for Witty Pi.
 # It is recommended to run it in your home directory.
 #
+# 2022-08 Thomas Ingeman-Nielsen, thin@dtu.dk
+#             Updated download URL to forked repository
+#             By default do not install UWI
 
 # check if sudo is used
 if [ "$(id -u)" != 0 ]; then
@@ -12,8 +15,28 @@ if [ "$(id -u)" != 0 ]; then
   exit 1
 fi
 
-# target directory
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/wittypi"
+# This install script may be sourced from other install scripts.
+# In the parent script, set WITTYPI_USE_GLOBAL_SETTINGS=true to
+# by pass definitions below.
+if [[ -z $WITTYPI_USE_GLOBAL_SETTINGS || $WITTYPI_USE_GLOBAL_SETTINGS != true ]]; then
+
+  CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  WITTYPI_DIR="$CURRENT_DIR"/wittypi
+  TMP_DIR="$CURRENT_DIR"/tmp
+
+  FORCE_WITTYPI_INSTALL=true
+  WITTYPI_BRANCH=minimal_source
+  WITTYPI_DOWNLOAD_URL="https://github.com/tingeman/Witty-Pi-4/archive/refs/heads/$WITTYPI_BRANCH.zip"
+  # To install UUGEAR latest version instead, uncomment the following line:
+  # WITTYPI_DOWNLOAD_URL="https://www.uugear.com/repo/WittyPi4/LATEST"
+  # NB will require also changes to the unpacking commands etc. ...
+
+  # Set following line to 'true' to install UUGEAR Web Interface
+  INSTALL_UWI=false
+  UWI_DOWNLOAD_URL="https://www.uugear.com/repo/UWI/installUWI.sh"
+else
+  echo ">>> Using globaly defined settings."
+fi
 
 # error counter
 ERR=0
@@ -105,32 +128,46 @@ fi
 # install wittyPi
 if [ $ERR -eq 0 ]; then
   echo '>>> Install wittypi'
-  if [ -d "wittypi" ]; then
+  if [[ -d "$WITTYPI_DIR" && $FORCE_WITTYPI_INSTALL == false ]]; then
     echo 'Seems wittypi is installed already, skip this step.'
   else
-    wget https://www.uugear.com/repo/WittyPi4/LATEST -O wittyPi.zip || ((ERR++))
-    unzip wittyPi.zip -d wittypi || ((ERR++))
-    cd wittypi
+    if [[ ! -d "$TMP_DIR" ]]; then
+      mkdir -p "$TMP_DIR"
+    fi
+    if [[ ! -d "$WITTYPI_DIR" ]]; then
+      mkdir -p "$WITTYPI_DIR"
+    fi
+    #wget https://www.uugear.com/repo/WittyPi4/LATEST -O wittyPi.zip || ((ERR_WPI++))
+    wget $WITTYPI_DOWNLOAD_URL -O "$TMP_DIR"/wittyPi.zip || ((ERR++))
+    unzip -q "$TMP_DIR"/wittyPi.zip -d "$TMP_DIR"/ || ((ERR++))
+    SRC_DIR="$TMP_DIR"/Witty-Pi-4-"$WITTYPI_BRANCH"
+    cp -rf "$SRC_DIR"/Software/wittypi/* "$WITTYPI_DIR"/
+    cd "$WITTYPI_DIR"
     chmod +x wittyPi.sh
     chmod +x daemon.sh
     chmod +x runScript.sh
     chmod +x beforeScript.sh
     chmod +x afterStartup.sh
     chmod +x beforeShutdown.sh
-    sed -e "s#/home/pi/wittypi#$DIR#g" init.sh >/etc/init.d/wittypi
+    sed -e "s#/home/pi/wittypi#$WITTYPI_DIR#g" init.sh >/etc/init.d/wittypi
     chmod +x /etc/init.d/wittypi
     update-rc.d wittypi defaults || ((ERR++))
-    touch wittyPi.log
-    touch schedule.log
-    cd ..
-    chown -R $SUDO_USER:$(id -g -n $SUDO_USER) wittypi || ((ERR++))
+    touch "$WITTYPI_DIR"/wittyPi.log
+    touch "$WITTYPI_DIR"/schedule.log
+    cd "$CURRENT_DIR"
+    chown -R $SUDO_USER:$(id -g -n $SUDO_USER) "$WITTYPI_DIR" || ((ERR++))
     sleep 2
-    rm wittyPi.zip
+    rm "$TMP_DIR"/wittyPi.zip
+    rm -r "$SRC_DIR"
   fi
 fi
 
-# install UUGear Web Interface
-curl https://www.uugear.com/repo/UWI/installUWI.sh | bash
+if [[ -z $INSTALL_UWI || $INSTALL_UWI == true ]]; then
+  # install UUGear Web Interface
+  curl $UWI_DOWNLOAD_URL | bash
+else
+  echo 'Skipping installation of UWI...'
+fi
 
 echo
 if [ $ERR -eq 0 ]; then
