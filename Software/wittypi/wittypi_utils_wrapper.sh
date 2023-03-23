@@ -17,7 +17,7 @@ wittypi_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # utilities
 . "$wittypi_dir/utilities.sh"
-. "$wittypi_dir/gpio-utils.sh"
+. "$wittypi_dir/gpio-util.sh"
 
 # Get the function name and remove it from the argument list
 function_name=$1
