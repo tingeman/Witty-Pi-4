@@ -60,16 +60,22 @@ else
   echo 'i2c-dev' >> /etc/modules
 fi
 
-i2c1=$(grep 'dtparam=i2c1=on' /boot/config.txt)
+# Bugfix: prevent multiple inserts on subsequent runs in special cases
+i2c1=$(grep '^\s*dtparam=i2c1=on' /boot/config.txt)
 i2c1=$(echo -e "$i2c1" | sed -e 's/^[[:space:]]*//')
+#i2c1=$(grep 'dtparam=i2c1=on' /boot/config.txt)
+#i2c1=$(echo -e "$i2c1" | sed -e 's/^[[:space:]]*//')
 if [[ -z "$i2c1" || "$i2c1" == "#"* ]]; then
   echo 'dtparam=i2c1=on' >> /boot/config.txt
 else
   echo 'Seems i2c1 parameter already set, skip this step.'
 fi
 
-i2c_arm=$(grep 'dtparam=i2c_arm=on' /boot/config.txt)
+# Bugfix: prevent multiple inserts on subsequent runs in special cases
+i2c_arm=$(grep '^\s*dtparam=i2c_arm=on' /boot/config.txt)
 i2c_arm=$(echo -e "$i2c_arm" | sed -e 's/^[[:space:]]*//')
+#i2c_arm=$(grep 'dtparam=i2c_arm=on' /boot/config.txt)
+#i2c_arm=$(echo -e "$i2c_arm" | sed -e 's/^[[:space:]]*//')
 if [[ -z "$i2c_arm" || "$i2c_arm" == "#"* ]]; then
   echo 'dtparam=i2c_arm=on' >> /boot/config.txt
 else
