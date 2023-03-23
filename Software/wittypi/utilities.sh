@@ -3,6 +3,35 @@
 #
 # This script provides some useful utility functions
 #
+#
+# Modified:
+# 2022-08 Thomas Ingeman-Nielsen, thin@dtu.dk
+#             Implemented use of external wittyPi.conf to configure paths
+#             with fall-back to standard locations if wittyPi.conf is not available.
+
+# include configuration script in same directory
+#wittypi_dir="`dirname \"$0\"`"
+#wittypi_dir="`( cd \"$wittypi_dir\" && pwd )`"
+wittypi_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+if [ -z "$wittypi_dir" ] ; then
+  exit 1
+fi
+
+# include wittyPi.conf script if it exists
+if [ -f "$wittypi_dir/wittyPi.conf" ]; then
+  . $wittypi_dir/wittyPi.conf
+fi
+
+
+# If log-file name and path is not defined, set it to the standard location
+if [ -z "$WITTYPI_LOG_FILE" ] ; then
+  WITTYPI_LOG_FILE="$wittypi_dir/wittyPi.log"
+fi
+if [ ! -f $WITTYPI_LOG_FILE ] ; then
+  touch $WITTYPI_LOG_FILE
+fi
+
+
 
 export LC_ALL=en_GB.UTF-8
 
@@ -152,7 +181,7 @@ get_network_timestamp()
 
 is_mc_connected()
 {
-  local result=$(i2cdetect -y 1)
+  local result=$(/usr/sbin/i2cdetect -y 1)
   if [[ $result == *"$(printf '%02x')"* ]] ; then
     echo 1
   else
@@ -346,18 +375,19 @@ current_timestamp()
   fi
 }
 
-wittypi_home="`dirname \"$0\"`"
-wittypi_home="`( cd \"$wittypi_home\" && pwd )`"
+#wittypi_home="`dirname \"$0\"`"
+#wittypi_home="`( cd \"$wittypi_home\" && pwd )`"
 log2file()
 {
   local datetime='[xxxx-xx-xx xx:xx:xx]'
   if [ $TIME_UNKNOWN -eq 0 ]; then
     datetime=$(date +'[%Y-%m-%d %H:%M:%S]')
   elif [ $TIME_UNKNOWN -eq 2 ]; then
-    datetime=$(date +'<%Y-%m-%d %H:%M:%S>')
+    datetime=$(date +'[%Y-%m-%d %H:%M:%S]')
   fi
   local msg="$datetime $1"
-  echo $msg >> $wittypi_home/wittyPi.log
+#  echo $msg >> $wittypi_home/wittyPi.log
+  echo $msg >> $WITTYPI_LOG_FILE
 }
 
 log()
@@ -376,7 +406,7 @@ i2c_read()
   if [ $# -gt 3 ] ; then
     retry=$4
   fi
-  local result=$(i2cget -y $1 $2 $3)
+  local result=$(/usr/sbin/i2cget -y $1 $2 $3)
   if [[ $result =~ ^0x[0-9a-fA-F]{2}$ ]] ; then
     echo $result;
   else
@@ -397,7 +427,7 @@ i2c_write()
   if [ $# -gt 4 ] ; then
     retry=$5
   fi
-  i2cset -y $1 $2 $3 $4
+  /usr/sbin/i2cset -y $1 $2 $3 $4
   local result=$(i2c_read $1 $2 $3)
   if [ "$result" != $(dec2hex "$4") ] ; then
     retry=$(( $retry + 1 ))
@@ -413,7 +443,7 @@ i2c_write()
 
 get_temperature()
 {
-  local data=$(i2cget -y 1 $I2C_MC_ADDRESS $I2C_LM75B_TEMPERATURE w)
+  local data=$(/usr/sbin/i2cget -y 1 $I2C_MC_ADDRESS $I2C_LM75B_TEMPERATURE w)
 
   #if [[ $data =~ ^0x[0-9a-fA-F]{4}$ && $data != 0xffff ]]; then
   if [[ $data =~ ^0x[0-9a-fA-F]{4}$ ]]; then
@@ -463,7 +493,7 @@ do_shutdown()
   log 'Halting all processes and then shutdown Raspberry Pi...'
 
   # halt everything and shutdown
-  shutdown -h now
+  /usr/sbin/shutdown -h now
 }
 
 schedule_script_interrupted()
@@ -530,6 +560,13 @@ get_recovery_voltage_threshold()
     recVolt+='V'
   fi
   echo $recVolt;
+}
+
+set_default_power_state()
+{
+  # 1 = Power on Raspberry Pi when power is connected
+  # 0 = Power on Raspberry Pi when power is connected
+  i2c_write 0x01 $I2C_MC_ADDRESS $I2C_CONF_DEFAULT_ON $1
 }
 
 set_low_voltage_threshold()
