@@ -465,6 +465,11 @@ get_temperature()
   fi
 }
 
+get_action_reason()
+{
+  i2c_read 0x01 $I2C_MC_ADDRESS $I2C_ACTION_REASON
+}
+
 clear_alarm_flags()
 {
   local ctrl2=0x0
