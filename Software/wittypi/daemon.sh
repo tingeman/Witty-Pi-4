@@ -3,6 +3,10 @@
 #
 # This script should be auto started, to support WittyPi hardware
 #
+# Modified:
+# 2023-03 Thomas Ingeman-Nielsen, thin@dtu.dk
+#           Implemented use of external wittyPi.conf to configure paths
+#           with fall-back to standard locations if wittyPi.conf is not available.
 
 # get current directory
 cur_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -12,6 +16,28 @@ cur_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # GPIO utilites
 . "$cur_dir/gpio-util.sh"
+
+# include wittyPi.conf script if it exists
+if [ -f "$cur_dir/wittyPi.conf" ]; then
+  . $cur_dir/wittyPi.conf
+fi
+
+# If log-file name and path is not defined, set it to the standard location
+if [ -z "$WITTYPI_LOG_FILE" ] ; then
+  WITTYPI_LOG_FILE=$cur_dir/wittyPi.log
+fi
+# If schedule-log-file name and path is not defined, set it to the standard location
+if [ -z "$SCHEDULE_LOG_FILE" ] ; then
+  SCHEDULE_LOG_FILE=$cur_dir/schedule.log
+fi
+
+if [ ! -f $WITTYPI_LOG_FILE ] ; then
+  touch $WITTYPI_LOG_FILE
+fi
+if [ ! -f $SCHEDULE_LOG_FILE ] ; then
+  touch $SCHEDULE_LOG_FILE
+fi
+
 
 TIME_UNKNOWN=1
 log 'Witty Pi daemon (v4.10) is started.'
@@ -151,7 +177,7 @@ fi
 
 # delay until GPIO pin state gets stable
 counter=0
-while [ $counter -lt 5 ]; do  # increase this value if it needs more time
+while [ $counter -lt 10 ]; do  # increase this value if it needs more time
   if [ $(gpio -g read $HALT_PIN) == '1' ] ; then
     counter=$(($counter+1))
   else
@@ -161,17 +187,17 @@ while [ $counter -lt 5 ]; do  # increase this value if it needs more time
 done
 
 # run beforeScript.sh
-"$cur_dir/beforeScript.sh" >> "$cur_dir/wittyPi.log" 2>&1
+"$cur_dir/beforeScript.sh" >> "$WITTYPI_LOG_FILE" 2>&1
 
 # run schedule script
 if [ $has_mc == 1 ] ; then
-  "$cur_dir/runScript.sh" 0 revise >> "$cur_dir/schedule.log" &
+  "$cur_dir/runScript.sh" 0 revise >> "$SCHEDULE_LOG_FILE" &
 else
   log 'Witty Pi is not connected, skip schedule script...'
 fi
 
 # run afterStartup.sh
-"$cur_dir/afterStartup.sh" >> "$cur_dir/wittyPi.log" 2>&1
+"$cur_dir/afterStartup.sh" >> "$WITTYPI_LOG_FILE" 2>&1
 
 # indicates system is up
 log "Send out the SYS_UP signal via GPIO-$SYSUP_PIN pin."
@@ -205,7 +231,7 @@ else
 fi
 
 # run beforeShutdown.sh
-"$cur_dir/beforeShutdown.sh" >> "$cur_dir/wittyPi.log" 2>&1
+"$cur_dir/beforeShutdown.sh" >> "$WITTYPI_LOG_FILE" 2>&1
 
 # shutdown Raspberry Pi
 do_shutdown $HALT_PIN
