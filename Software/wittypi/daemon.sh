@@ -40,7 +40,7 @@ fi
 
 
 TIME_UNKNOWN=1
-log 'Witty Pi daemon (v4.10) is started.'
+log 'Witty Pi daemon (v4.11) is started.'
 
 # log Raspberry Pi model
 pi_model=$(cat /proc/device-tree/model)
