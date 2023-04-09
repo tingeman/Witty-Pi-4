@@ -13,16 +13,16 @@
 
 case "$1" in
     start)
-        echo "Starting Witty Pi 3 Daemon..."
+        echo "Starting Witty Pi 4 Daemon..."
         /home/pi/wittypi/daemon.sh &
-        sleep 1
-        daemonPid=$(ps --ppid $! -o pid=)
-        echo $daemonPid > /var/run/wittypi_daemon.pid
+	sleep 1
+	daemonPid=$(ps --ppid $! -o pid=)
+	echo $daemonPid > /var/run/wittypi_daemon.pid
         ;;
     stop)
-        echo "Stopping Witty Pi 3 Daemon..."
-        daemonPid=$(cat /var/run/wittypi_daemon.pid)
-        kill -9 $daemonPid
+        echo "Stopping Witty Pi 4 Daemon..."
+	daemonPid=$(cat /var/run/wittypi_daemon.pid)
+	kill -9 $daemonPid
         ;;
     *)
         echo "Usage: /etc/init.d/wittypi start|stop"

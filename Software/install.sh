@@ -24,8 +24,8 @@ if [[ -z $WITTYPI_USE_GLOBAL_SETTINGS || $WITTYPI_USE_GLOBAL_SETTINGS != true ]]
   WITTYPI_DIR="$CURRENT_DIR"/wittypi
   TMP_DIR="$CURRENT_DIR"/tmp
 
-  FORCE_WITTYPI_INSTALL=false
-  WITTYPI_BRANCH=main
+  FORCE_WITTYPI_INSTALL=true
+  WITTYPI_BRANCH=minimal_source
   WITTYPI_DOWNLOAD_URL="https://github.com/tingeman/Witty-Pi-4/archive/refs/heads/$WITTYPI_BRANCH.zip"
   # To install UUGEAR latest version instead, uncomment the following line:
   # WITTYPI_DOWNLOAD_URL="https://www.uugear.com/repo/WittyPi4/LATEST"
@@ -33,13 +33,13 @@ if [[ -z $WITTYPI_USE_GLOBAL_SETTINGS || $WITTYPI_USE_GLOBAL_SETTINGS != true ]]
 
   # Set following line to 'true' to install UUGEAR Web Interface
   INSTALL_UWI=false
-  #UWI_DOWNLOAD_URL="https://www.uugear.com/repo/UWI/installUWI.sh"
+  UWI_DOWNLOAD_URL="https://www.uugear.com/repo/UWI/installUWI.sh"
 else
   echo ">>> Using globaly defined settings."
 fi
 
 # error counter
-ERR_WPI=0
+ERR=0
 
 echo '================================================================================'
 echo '|                                                                              |'
@@ -52,48 +52,40 @@ echo '>>> Enable I2C'
 if grep -q 'i2c-bcm2708' /etc/modules; then
   echo 'Seems i2c-bcm2708 module already exists, skip this step.'
 else
-  echo 'i2c-bcm2708' >>/etc/modules
+  echo 'i2c-bcm2708' >> /etc/modules
 fi
 if grep -q 'i2c-dev' /etc/modules; then
   echo 'Seems i2c-dev module already exists, skip this step.'
 else
-  echo 'i2c-dev' >>/etc/modules
+  echo 'i2c-dev' >> /etc/modules
 fi
 
-i2c1=$(grep 'dtparam=i2c1=on' /boot/config.txt)
+# Bugfix: prevent multiple inserts on subsequent runs in special cases
+i2c1=$(grep '^\s*dtparam=i2c1=on' /boot/config.txt)
 i2c1=$(echo -e "$i2c1" | sed -e 's/^[[:space:]]*//')
-if [[ -z "$i2c1" ]]; then
-  # if line is missing, insert it at end of file
-  echo 'dtparam=i2c1=on' >>/boot/config.txt
-  echo "Inserted missing line:   dtparam=i2c1=on"
-elif [[ "$match" == "#"* ]]; then
-  # if line is commented, uncomment it
-  sed -i "s/^\s*#\s*\(dtparam=i2c1=on.*\)/\1/" /boot/config.txt
-  echo "Found commented line and uncommented:  dtparam=i2c1=on"
+#i2c1=$(grep 'dtparam=i2c1=on' /boot/config.txt)
+#i2c1=$(echo -e "$i2c1" | sed -e 's/^[[:space:]]*//')
+if [[ -z "$i2c1" || "$i2c1" == "#"* ]]; then
+  echo 'dtparam=i2c1=on' >> /boot/config.txt
 else
-  # if line exists, do nothing
   echo 'Seems i2c1 parameter already set, skip this step.'
 fi
 
-i2c_arm=$(grep 'dtparam=i2c_arm=on' /boot/config.txt)
+# Bugfix: prevent multiple inserts on subsequent runs in special cases
+i2c_arm=$(grep '^\s*dtparam=i2c_arm=on' /boot/config.txt)
 i2c_arm=$(echo -e "$i2c_arm" | sed -e 's/^[[:space:]]*//')
-if [[ -z "$i2c_arm" ]]; then
-  # if line is missing, insert it at end of file
-  echo 'dtparam=i2c_arm=on' >>/boot/config.txt
-  echo "Inserted missing line:   dtparam=i2c_arm=on"
-elif [[ "$match" == "#"* ]]; then
-  # if line is commented, uncomment it
-  sed -i "s/^\s*#\s*\(dtparam=i2c_arm=on.*\)/\1/" /boot/config.txt
-  echo "Found commented line and uncommented:  dtparam=i2c_arm=on"
+#i2c_arm=$(grep 'dtparam=i2c_arm=on' /boot/config.txt)
+#i2c_arm=$(echo -e "$i2c_arm" | sed -e 's/^[[:space:]]*//')
+if [[ -z "$i2c_arm" || "$i2c_arm" == "#"* ]]; then
+  echo 'dtparam=i2c_arm=on' >> /boot/config.txt
 else
-  # if line exists, do nothing
   echo 'Seems i2c_arm parameter already set, skip this step.'
 fi
 
 miniuart=$(grep 'dtoverlay=pi3-miniuart-bt' /boot/config.txt)
 miniuart=$(echo -e "$miniuart" | sed -e 's/^[[:space:]]*//')
 if [[ -z "$miniuart" || "$miniuart" == "#"* ]]; then
-  echo 'dtoverlay=pi3-miniuart-bt' >>/boot/config.txt
+  echo 'dtoverlay=pi3-miniuart-bt' >> /boot/config.txt
 else
   echo 'Seems setting Pi3 Bluetooth to use mini-UART is done already, skip this step.'
 fi
@@ -101,7 +93,7 @@ fi
 miniuart=$(grep 'dtoverlay=miniuart-bt' /boot/config.txt)
 miniuart=$(echo -e "$miniuart" | sed -e 's/^[[:space:]]*//')
 if [[ -z "$miniuart" || "$miniuart" == "#"* ]]; then
-  echo 'dtoverlay=miniuart-bt' >>/boot/config.txt
+  echo 'dtoverlay=miniuart-bt' >> /boot/config.txt
 else
   echo 'Seems setting Bluetooth to use mini-UART is done already, skip this step.'
 fi
@@ -109,7 +101,7 @@ fi
 core_freq=$(grep 'core_freq=250' /boot/config.txt)
 core_freq=$(echo -e "$core_freq" | sed -e 's/^[[:space:]]*//')
 if [[ -z "$core_freq" || "$core_freq" == "#"* ]]; then
-  echo 'core_freq=250' >>/boot/config.txt
+  echo 'core_freq=250' >> /boot/config.txt
 else
   echo 'Seems the frequency of GPU processor core is set to 250MHz already, skip this step.'
 fi
@@ -126,21 +118,21 @@ echo '>>> Install i2c-tools'
 if hash i2cget 2>/dev/null; then
   echo 'Seems i2c-tools is installed already, skip this step.'
 else
-  apt-get install -y i2c-tools || ((ERR_WPI++))
+  apt-get install -y i2c-tools || ((ERR++))
 fi
 
 # make sure en_GB.UTF-8 locale is installed
 echo '>>> Make sure en_GB.UTF-8 locale is installed'
 locale_commentout=$(sed -n 's/\(#\).*en_GB.UTF-8 UTF-8/1/p' /etc/locale.gen)
 if [[ $locale_commentout -ne 1 ]]; then
-  echo 'Seems en_GB.UTF-8 locale has been installed, skip this step.'
+	echo 'Seems en_GB.UTF-8 locale has been installed, skip this step.'
 else
-  sed -i.bak 's/^.*\(en_GB.UTF-8[[:blank:]]\+UTF-8\)/\1/' /etc/locale.gen
-  locale-gen
+	sed -i.bak 's/^.*\(en_GB.UTF-8[[:blank:]]\+UTF-8\)/\1/' /etc/locale.gen
+	locale-gen
 fi
 
 # install wittyPi
-if [ $ERR_WPI -eq 0 ]; then
+if [ $ERR -eq 0 ]; then
   echo '>>> Install wittypi'
   if [[ -d "$WITTYPI_DIR" && $FORCE_WITTYPI_INSTALL == false ]]; then
     echo 'Seems wittypi is installed already, skip this step.'
@@ -152,8 +144,8 @@ if [ $ERR_WPI -eq 0 ]; then
       mkdir -p "$WITTYPI_DIR"
     fi
     #wget https://www.uugear.com/repo/WittyPi4/LATEST -O wittyPi.zip || ((ERR_WPI++))
-    wget $WITTYPI_DOWNLOAD_URL -O "$TMP_DIR"/wittyPi.zip || ((ERR_WPI++))
-    unzip -q "$TMP_DIR"/wittyPi.zip -d "$TMP_DIR"/ || ((ERR_WPI++))
+    wget $WITTYPI_DOWNLOAD_URL -O "$TMP_DIR"/wittyPi.zip || ((ERR++))
+    unzip -q "$TMP_DIR"/wittyPi.zip -d "$TMP_DIR"/ || ((ERR++))
     SRC_DIR="$TMP_DIR"/Witty-Pi-4-"$WITTYPI_BRANCH"
     cp -rf "$SRC_DIR"/Software/wittypi/* "$WITTYPI_DIR"/
     cd "$WITTYPI_DIR"
@@ -165,11 +157,11 @@ if [ $ERR_WPI -eq 0 ]; then
     chmod +x beforeShutdown.sh
     sed -e "s#/home/pi/wittypi#$WITTYPI_DIR#g" init.sh >/etc/init.d/wittypi
     chmod +x /etc/init.d/wittypi
-    update-rc.d wittypi defaults || ((ERR_WPI++))
+    update-rc.d wittypi defaults || ((ERR++))
     touch "$WITTYPI_DIR"/wittyPi.log
     touch "$WITTYPI_DIR"/schedule.log
     cd "$CURRENT_DIR"
-    chown -R $SUDO_USER:$(id -g -n $SUDO_USER) "$WITTYPI_DIR" || ((ERR_WPI++))
+    chown -R $SUDO_USER:$(id -g -n $SUDO_USER) "$WITTYPI_DIR" || ((ERR++))
     sleep 2
     rm "$TMP_DIR"/wittyPi.zip
     rm -r "$SRC_DIR"
@@ -184,8 +176,7 @@ else
 fi
 
 echo
-
-if [ $ERR_WPI -eq 0 ]; then
+if [ $ERR -eq 0 ]; then
   echo '>>> All done. Please reboot your Pi :-)'
 else
   echo '>>> Something went wrong. Please check the messages above :-('

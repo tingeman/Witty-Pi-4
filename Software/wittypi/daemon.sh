@@ -4,31 +4,31 @@
 # This script should be auto started, to support WittyPi hardware
 #
 # Modified:
-# 2022-08 Thomas Ingeman-Nielsen, thin@dtu.dk
-#             Implemented use of external wittyPi.conf to configure paths
-#             with fall-back to standard locations if wittyPi.conf is not available.
+# 2023-03 Thomas Ingeman-Nielsen, thin@dtu.dk
+#           Implemented use of external wittyPi.conf to configure paths
+#           with fall-back to standard locations if wittyPi.conf is not available.
 
 # get current directory
-wittypi_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+cur_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # utilities
-. "$wittypi_dir/utilities.sh"
+. "$cur_dir/utilities.sh"
 
 # GPIO utilites
-. "$wittypi_dir/gpio-util.sh"
+. "$cur_dir/gpio-util.sh"
 
 # include wittyPi.conf script if it exists
-if [ -f "$wittypi_dir/wittyPi.conf" ]; then
-  . $wittypi_dir/wittyPi.conf
+if [ -f "$cur_dir/wittyPi.conf" ]; then
+  . $cur_dir/wittyPi.conf
 fi
 
 # If log-file name and path is not defined, set it to the standard location
 if [ -z "$WITTYPI_LOG_FILE" ] ; then
-  WITTYPI_LOG_FILE=$wittypi_dir/wittyPi.log
+  WITTYPI_LOG_FILE=$cur_dir/wittyPi.log
 fi
 # If schedule-log-file name and path is not defined, set it to the standard location
 if [ -z "$SCHEDULE_LOG_FILE" ] ; then
-  SCHEDULE_LOG_FILE=$wittypi_dir/schedule.log
+  SCHEDULE_LOG_FILE=$cur_dir/schedule.log
 fi
 
 if [ ! -f $WITTYPI_LOG_FILE ] ; then
@@ -40,22 +40,22 @@ fi
 
 
 TIME_UNKNOWN=1
-log 'Witty Pi daemon (v4.10) is started.'
+log 'Witty Pi daemon (v4.11) is started.'
 
 # log Raspberry Pi model
 pi_model=$(cat /proc/device-tree/model)
 log "Running on $pi_model"
 
 # log NOOBS version, if exists
-if [[ ! -d "$wittypi_dir/tmp" ]]; then
-  mkdir "$wittypi_dir/tmp"
+if [[ ! -d "$cur_dir/tmp" ]]; then
+  mkdir "$cur_dir/tmp"
 fi
-mount /dev/mmcblk0p1 "$wittypi_dir/tmp"
-noobs_ver=$(cat "$wittypi_dir/tmp/BUILD-DATA" | grep 'NOOBS Version:')
+mount /dev/mmcblk0p1 "$cur_dir/tmp"
+noobs_ver=$(cat "$cur_dir/tmp/BUILD-DATA" | grep 'NOOBS Version:')
 if [ ! -z "$noobs_ver" ]; then
   log "$noobs_ver"
 fi
-umount "$wittypi_dir/tmp"
+umount "$cur_dir/tmp"
 
 # check 1-wire confliction
 if one_wire_confliction ; then
@@ -187,17 +187,17 @@ while [ $counter -lt 10 ]; do  # increase this value if it needs more time
 done
 
 # run beforeScript.sh
-"$wittypi_dir/beforeScript.sh" >> "$WITTYPI_LOG_FILE" 2>&1
+"$cur_dir/beforeScript.sh" >> "$WITTYPI_LOG_FILE" 2>&1
 
 # run schedule script
 if [ $has_mc == 1 ] ; then
-  "$wittypi_dir/runScript.sh" 0 revise >> "$SCHEDULE_LOG_FILE" &
+  "$cur_dir/runScript.sh" 0 revise >> "$SCHEDULE_LOG_FILE" &
 else
   log 'Witty Pi is not connected, skip schedule script...'
 fi
 
 # run afterStartup.sh
-"$wittypi_dir/afterStartup.sh" >> "$WITTYPI_LOG_FILE" 2>&1
+"$cur_dir/afterStartup.sh" >> "$WITTYPI_LOG_FILE" 2>&1
 
 # indicates system is up
 log "Send out the SYS_UP signal via GPIO-$SYSUP_PIN pin."
@@ -231,7 +231,7 @@ else
 fi
 
 # run beforeShutdown.sh
-"$wittypi_dir/beforeShutdown.sh" >> "$WITTYPI_LOG_FILE" 2>&1
+"$cur_dir/beforeShutdown.sh" >> "$WITTYPI_LOG_FILE" 2>&1
 
 # shutdown Raspberry Pi
 do_shutdown $HALT_PIN
