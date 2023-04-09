@@ -33,19 +33,19 @@ fi
 
 # If log-file name and path is not defined, set it to the standard location
 if [ -z "$WITTYPI_LOG_FILE" ] ; then
-  WITTYPI_LOG_FILE=$wittypi_dir/wittyPi.log
+  WITTYPI_LOG_FILE="$wittypi_dir/wittyPi.log"
 fi
 # If schedule-log-file name and path is not defined, set it to the standard location
 if [ -z "$SCHEDULE_LOG_FILE" ] ; then
-  SCHEDULE_LOG_FILE=$wittypi_dir/schedule.log
+  SCHEDULE_LOG_FILE="$wittypi_dir/schedule.log"
 fi
 # If schedule.wpi filename and path is not defined, set it to the standard location
 if [ -z "$SCHEDULE_FILE" ] ; then
-  SCHEDULE_FILE=$wittypi_dir/schedule.wpi
+  SCHEDULE_FILE="$wittypi_dir/schedule.wpi"
 fi
 # If path to library of schedule files is not defined, set it to the standard location
 if [ -z "$SCHEDULES_DIR" ] ; then
-  SCHEDULES_DIR=$wittypi_dir/schedules
+  SCHEDULES_DIR="$wittypi_dir/schedules"
 fi
 
 if [ ! -f $WITTYPI_LOG_FILE ] ; then
